@@ -263,7 +263,9 @@ def generate_caption_simple(picture, model, words_to_index, index_to_words,
             print(f"Error in step {step}: {e}")
             break
     
-    return ' '.join(generated_words) if generated_words else "No caption generated" 
+    return ' '.join(generated_words) if generated_words else "No caption generated"
+
+def generate_caption(picture, model, words_to_index, index_to_words, 
                     max_length=124, max_steps=25, temperature=0.7, top_k=5):
     """
     Generate a caption for a given image feature vector.
