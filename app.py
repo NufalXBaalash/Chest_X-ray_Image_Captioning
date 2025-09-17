@@ -7,7 +7,6 @@ from keras.models import load_model
 from PIL import Image
 import io
 import os
-import cv2
 
 # Page configuration
 st.set_page_config(
