@@ -7,6 +7,8 @@ from keras.models import load_model
 from PIL import Image
 import io
 import os
+from keras.applications.densenet import DenseNet121, preprocess_input
+from tensorflow.keras.utils import load_img, img_to_array
 
 # Page configuration
 st.set_page_config(
@@ -148,6 +150,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 @st.cache_resource
+def load_feature_extractor():
+    """Load DenseNet121 for feature extraction"""
+    try:
+        # Load DenseNet121 base model (same as used for encoding)
+        base_model = DenseNet121(weights="imagenet", include_top=False, pooling="avg", input_shape=(224, 224, 3))
+        return base_model
+    except Exception as e:
+        st.error(f"Error loading feature extractor: {str(e)}")
+        return None
+
+@st.cache_resource
 def load_model_and_data():
     """Load the trained model and tokenizer data with caching"""
     try:
@@ -176,28 +189,36 @@ def load_model_and_data():
         return None, None, None, None
 
 def preprocess_image(uploaded_file):
-    """Preprocess uploaded image to match model input requirements"""
+    """Preprocess uploaded image using DenseNet121 feature extraction (same as used for encodings)"""
     try:
-        # Read image
+        # Load the feature extractor
+        feature_extractor = load_feature_extractor()
+        if feature_extractor is None:
+            return None, None
+        
+        # Read image using PIL
         image = Image.open(uploaded_file)
         
         # Convert to RGB if necessary
         if image.mode != 'RGB':
             image = image.convert('RGB')
         
-        # Resize image (adjust size as needed for your model)
-        image = image.resize((224, 224))  # Common size for image captioning models
+        # Resize image to (224, 224) - same as used for encoding
+        image = image.resize((224, 224))
         
-        # Convert to numpy array and normalize
-        image_array = np.array(image) / 255.0
+        # Convert to numpy array
+        image_array = np.array(image)
         
-        # For this model, we need to create a dummy feature vector
-        # since the model expects pre-computed features, not raw pixels
-        # This is a simplified approach - in practice, you'd use a CNN encoder
-        feature_dim = 2048  # Common feature dimension for image captioning
-        dummy_features = np.random.normal(0, 0.1, (1, feature_dim))
+        # Add batch dimension
+        image_array = np.expand_dims(image_array, axis=0)
         
-        return dummy_features, image
+        # Preprocess using DenseNet preprocessing (same as used for encoding)
+        image_array = preprocess_input(image_array)
+        
+        # Extract features using DenseNet121 (same as used for encoding)
+        features = feature_extractor.predict(image_array, verbose=0)
+        
+        return features, image
     except Exception as e:
         st.error(f"Error preprocessing image: {str(e)}")
         return None, None
@@ -395,8 +416,8 @@ def main():
             st.session_state.display_image = Image.open(uploaded_file)
             st.session_state.image_name = uploaded_file.name
             
-            # Show limitation notice
-            st.markdown('<div class="warning-box">⚠️ <strong>Note:</strong> This model requires pre-computed image features. For uploaded images, we use a simplified approach that may not produce accurate captions. For best results, use pre-encoded images from the dataset.</div>', unsafe_allow_html=True)
+            # Show info notice
+            st.markdown('<div class="info-box">ℹ️ <strong>Note:</strong> Uploaded images are processed using the same DenseNet121 feature extraction as the training data. This should produce accurate captions for medical images.</div>', unsafe_allow_html=True)
             
             # Generate caption button
             if st.button("🎯 Generate Caption", type="primary", use_container_width=True):
