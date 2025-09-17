@@ -281,8 +281,8 @@ def detect_pneumonia(pneumonia_model, image_array):
             diagnosis = "Normal (No Pneumonia)"
             confidence = normal_prob
         
-        # Ensure confidence is between 0 and 1
-        confidence = min(max(confidence, 0.0), 1.0)
+        # Ensure confidence is between 0 and 1 and convert to Python float
+        confidence = float(min(max(confidence, 0.0), 1.0))
         
         return diagnosis, confidence
     except Exception as e:
@@ -497,7 +497,7 @@ def main():
             st.markdown('<div class="info-box">ℹ️ <strong>Note:</strong> Uploaded images are processed using the same DenseNet121 feature extraction as the training data. This should produce accurate captions for medical images.</div>', unsafe_allow_html=True)
             
             # Generate caption and detect pneumonia button
-            if st.button("🎯 Generate Caption & Detect Pneumonia", type="primary", use_container_width=True):
+            if st.button("🎯 Generate Caption & Detect Pneumonia", type="primary", width='stretch'):
                 with st.spinner("🔄 Processing image..."):
                     try:
                         # Preprocess image for caption generation
@@ -539,7 +539,7 @@ def main():
             st.markdown(f'<div class="info-box">📷 <strong>Selected:</strong> {selected_image}</div>', unsafe_allow_html=True)
             
             # Generate caption for pre-encoded image
-            if st.button("🎯 Generate Caption for Selected Image", type="primary", use_container_width=True):
+            if st.button("🎯 Generate Caption for Selected Image", type="primary", width='stretch'):
                 with st.spinner("🔄 Generating caption..."):
                     try:
                         image_vector = encodings[selected_image].reshape((1, -1))
@@ -566,7 +566,7 @@ def main():
         with col1:
             st.markdown('<div class="image-container">', unsafe_allow_html=True)
             if st.session_state.display_image is not None:
-                st.image(st.session_state.display_image, caption=f"📷 {st.session_state.image_name}", use_container_width=True)
+                st.image(st.session_state.display_image, caption=f"📷 {st.session_state.image_name}", width='stretch')
             else:
                 st.markdown(f"<h4>📷 {st.session_state.image_name}</h4>", unsafe_allow_html=True)
                 st.info("Image preview not available for pre-encoded images")
@@ -586,9 +586,9 @@ def main():
                     st.success(f"✅ **{st.session_state.pneumonia_diagnosis}**")
                 
                 # Show confidence as a progress bar
-                confidence_percent = st.session_state.pneumonia_confidence * 100
-                # Ensure progress value is between 0 and 1
-                progress_value = min(max(st.session_state.pneumonia_confidence, 0.0), 1.0)
+                confidence_percent = float(st.session_state.pneumonia_confidence) * 100
+                # Ensure progress value is between 0 and 1 and convert to Python float
+                progress_value = float(min(max(st.session_state.pneumonia_confidence, 0.0), 1.0))
                 st.progress(progress_value)
                 st.metric("Confidence", f"{confidence_percent:.1f}%")
             
@@ -606,7 +606,7 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Add a new generation button
-        if st.button("🔄 Analyze New Image", use_container_width=True):
+        if st.button("🔄 Analyze New Image", width='stretch'):
             st.session_state.generated_caption = None
             st.session_state.pneumonia_diagnosis = None
             st.session_state.pneumonia_confidence = None
