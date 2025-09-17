@@ -227,7 +227,7 @@ def Image_Caption(picture, model, words_to_index, index_to_words,
         if word == 'xxxx':  # skip placeholder tokens
             continue
         # Avoid repeating the same word 3 times consecutively
-        if len(generated_words) >= 2 and word == generated_words[-1] == generated_words[-2]:
+        if len(generated_words) >= 2 and word == generated_words[-1] and word == generated_words[-2]:
             break
 
         generated_words.append(word)
