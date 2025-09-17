@@ -390,42 +390,13 @@ def main():
     st.markdown('<h1 class="main-header">🖼️ Image Caption Generator</h1>', unsafe_allow_html=True)
     st.markdown("---")
     
-    # Load models and data
-    with st.spinner("Loading models and tokenizer..."):
-        model, words_to_index, index_to_words, encodings = load_model_and_data()
-        pneumonia_model = load_pneumonia_model()
+    # Load models and data silently
+    model, words_to_index, index_to_words, encodings = load_model_and_data()
+    pneumonia_model = load_pneumonia_model()
     
     if model is None:
-        st.error("Failed to load caption model. Please check that all required files are present.")
+        st.error("Failed to load models. Please check that all required files are present.")
         st.stop()
-    
-    # Show pneumonia model status
-    if pneumonia_model is not None:
-        st.success("✅ Pneumonia detection model loaded successfully!")
-    else:
-        st.warning("⚠️ Pneumonia detection model not available. Only caption generation will work.")
-    
-    # Check for encodings.pkl file
-    if encodings is None:
-        st.markdown('<div class="warning-box">', unsafe_allow_html=True)
-        st.markdown("⚠️ **encodings.pkl file not found!**")
-        st.markdown("""
-        To use the full functionality of this app, you need to download the `encodings.pkl` file.
-        
-        **Download Instructions:**
-        1. Click on this link: [Download encodings.pkl](https://drive.google.com/file/d/1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe/view?usp=drive_link)
-        2. Download the file and place it in your project directory
-        3. Refresh this page
-        
-        **Alternative method using command line:**
-        ```bash
-        pip install gdown
-        gdown 1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe
-        ```
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.markdown(f'<div class="success-box">✅ **encodings.pkl loaded successfully!** ({len(encodings)} image encodings available)</div>', unsafe_allow_html=True)
     
     # Sidebar for parameters
     st.sidebar.markdown("## 🎛️ Generation Parameters")
@@ -455,19 +426,8 @@ def main():
         help="Number of top probable words to sample from"
     )
     
-    # Image source selection
-    st.markdown('<h2 class="sub-header">📤 Choose Your Image</h2>', unsafe_allow_html=True)
-    
-    # If encodings are available, provide option to use pre-encoded images
-    if encodings is not None:
-        image_source = st.radio(
-            "Select image source:",
-            ["Upload new image", "Use pre-encoded image"],
-            help="Choose between uploading a new image or using a pre-encoded image from the dataset",
-            horizontal=True
-        )
-    else:
-        image_source = "Upload new image"
+    # Simple image upload section
+    st.markdown('<h2 class="sub-header">📤 Upload Your Image</h2>', unsafe_allow_html=True)
     
     # Initialize session state for results
     if 'generated_caption' not in st.session_state:
@@ -481,102 +441,63 @@ def main():
     if 'pneumonia_confidence' not in st.session_state:
         st.session_state.pneumonia_confidence = None
     
-    # Handle different image sources
-    if image_source == "Upload new image":
-        uploaded_file = st.file_uploader(
-            "Choose an image file",
-            type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
-            help="Upload an image to generate a caption"
-        )
-        
-        if uploaded_file is not None:
-            st.session_state.display_image = Image.open(uploaded_file)
-            st.session_state.image_name = uploaded_file.name
-            
-            # Show info notice
-            st.markdown('<div class="info-box">ℹ️ <strong>Note:</strong> Uploaded images are processed using the same DenseNet121 feature extraction as the training data. This should produce accurate captions for medical images.</div>', unsafe_allow_html=True)
-            
-            # Generate caption and detect pneumonia button
-            if st.button("🎯 Generate Caption & Detect Pneumonia", type="primary", width='stretch'):
-                with st.spinner("🔄 Processing image..."):
-                    try:
-                        # Preprocess image for caption generation
-                        image_features, _ = preprocess_image(uploaded_file)
-                        
-                        if image_features is not None:
-                            # Generate caption
-                            caption = generate_caption(
-                                model, image_features, words_to_index, index_to_words,
-                                max_steps=max_steps, temperature=temperature, top_k=top_k
-                            )
-                            st.session_state.generated_caption = caption
-                            
-                            # Detect pneumonia if model is available
-                            if pneumonia_model is not None:
-                                pneumonia_array, _ = preprocess_image_for_pneumonia(uploaded_file)
-                                if pneumonia_array is not None:
-                                    diagnosis, confidence = detect_pneumonia(pneumonia_model, pneumonia_array)
-                                    st.session_state.pneumonia_diagnosis = diagnosis
-                                    st.session_state.pneumonia_confidence = confidence
-                            
-                            st.rerun()
-                        else:
-                            st.error("Failed to preprocess the image. Please try again.")
-                    except Exception as e:
-                        st.error(f"Error processing image: {str(e)}")
-                        st.error("This might be because the model expects pre-computed image features. Try using a pre-encoded image instead.")
+    # Simple file uploader
+    uploaded_file = st.file_uploader(
+        "Choose an image file",
+        type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
+        help="Upload a chest X-ray image for analysis"
+    )
     
-    else:  # Use pre-encoded image
-        image_names = list(encodings.keys())
-        selected_image = st.selectbox(
-            "Select an image:",
-            image_names,
-            help="Choose from pre-encoded images"
-        )
+    if uploaded_file is not None:
+        st.session_state.display_image = Image.open(uploaded_file)
+        st.session_state.image_name = uploaded_file.name
         
-        if selected_image:
-            st.session_state.image_name = selected_image
-            st.markdown(f'<div class="info-box">📷 <strong>Selected:</strong> {selected_image}</div>', unsafe_allow_html=True)
-            
-            # Generate caption for pre-encoded image
-            if st.button("🎯 Generate Caption for Selected Image", type="primary", width='stretch'):
-                with st.spinner("🔄 Generating caption..."):
-                    try:
-                        image_vector = encodings[selected_image].reshape((1, -1))
+        # Show uploaded image
+        st.image(st.session_state.display_image, caption=f"📷 {st.session_state.image_name}", width='stretch')
+        
+        # Analysis button
+        if st.button("🎯 Analyze Image", type="primary", width='stretch'):
+            with st.spinner("🔄 Analyzing image..."):
+                try:
+                    # Preprocess image for caption generation
+                    image_features, _ = preprocess_image(uploaded_file)
+                    
+                    if image_features is not None:
+                        # Generate caption
                         caption = generate_caption(
-                            model, image_vector, words_to_index, index_to_words,
+                            model, image_features, words_to_index, index_to_words,
                             max_steps=max_steps, temperature=temperature, top_k=top_k
                         )
                         st.session_state.generated_caption = caption
+                        
+                        # Detect pneumonia if model is available
+                        if pneumonia_model is not None:
+                            pneumonia_array, _ = preprocess_image_for_pneumonia(uploaded_file)
+                            if pneumonia_array is not None:
+                                diagnosis, confidence = detect_pneumonia(pneumonia_model, pneumonia_array)
+                                st.session_state.pneumonia_diagnosis = diagnosis
+                                st.session_state.pneumonia_confidence = confidence
+                        
                         st.rerun()
-                    except Exception as e:
-                        st.error(f"Error generating caption: {str(e)}")
+                    else:
+                        st.error("Failed to process the image. Please try again.")
+                except Exception as e:
+                    st.error(f"Error analyzing image: {str(e)}")
     
     # Display results section
     if st.session_state.generated_caption is not None:
         st.markdown("---")
         st.markdown('<h2 class="sub-header">🎯 Analysis Results</h2>', unsafe_allow_html=True)
         
-        # Create a beautiful result container
-        st.markdown('<div class="result-container">', unsafe_allow_html=True)
-        
-        # Display image and results side by side
+        # Display results in a clean layout
         col1, col2 = st.columns([1, 1])
         
         with col1:
-            st.markdown('<div class="image-container">', unsafe_allow_html=True)
-            if st.session_state.display_image is not None:
-                st.image(st.session_state.display_image, caption=f"📷 {st.session_state.image_name}", width='stretch')
-            else:
-                st.markdown(f"<h4>📷 {st.session_state.image_name}</h4>", unsafe_allow_html=True)
-                st.info("Image preview not available for pre-encoded images")
-            st.markdown('</div>', unsafe_allow_html=True)
+            # Display caption
+            st.markdown("### 📝 Medical Description")
+            st.markdown(f'<div class="caption-box"><strong>"{st.session_state.generated_caption}"</strong></div>', unsafe_allow_html=True)
         
         with col2:
-            # Display caption
-            st.markdown("### 📝 Generated Caption")
-            st.markdown(f'<div class="caption-box"><strong>"{st.session_state.generated_caption}"</strong></div>', unsafe_allow_html=True)
-            
             # Display pneumonia detection if available
             if st.session_state.pneumonia_diagnosis is not None:
                 st.markdown("### 🏥 Pneumonia Detection")
@@ -585,64 +506,29 @@ def main():
                 else:
                     st.success(f"✅ **{st.session_state.pneumonia_diagnosis}**")
                 
-                # Show confidence as a progress bar
+                # Show confidence
                 confidence_percent = float(st.session_state.pneumonia_confidence) * 100
-                # Ensure progress value is between 0 and 1 and convert to Python float
                 progress_value = float(min(max(st.session_state.pneumonia_confidence, 0.0), 1.0))
                 st.progress(progress_value)
                 st.metric("Confidence", f"{confidence_percent:.1f}%")
-            
-            # Show parameters used
-            st.markdown("### ⚙️ Generation Parameters")
-            col_param1, col_param2, col_param3 = st.columns(3)
-            
-            with col_param1:
-                st.metric("Max Steps", max_steps)
-            with col_param2:
-                st.metric("Temperature", f"{temperature:.1f}")
-            with col_param3:
-                st.metric("Top-K", top_k)
         
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # Add a new generation button
+        # Add a new analysis button
         if st.button("🔄 Analyze New Image", width='stretch'):
             st.session_state.generated_caption = None
             st.session_state.pneumonia_diagnosis = None
             st.session_state.pneumonia_confidence = None
             st.rerun()
     
-    # Information section
+    # Simple information section
     st.markdown("---")
-    st.markdown('<h2 class="sub-header">ℹ️ About This App</h2>', unsafe_allow_html=True)
+    st.markdown("""
+    ### 🏥 Medical Image Analysis
+    This app analyzes chest X-ray images to:
+    - **Generate medical descriptions** of the image content
+    - **Detect pneumonia** with confidence scoring
     
-    col_info1, col_info2 = st.columns([1, 1])
-    
-    with col_info1:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        ### 🚀 How it works:
-        1. **Choose an image** by uploading or selecting from pre-encoded images
-        2. **Adjust parameters** in the sidebar to control caption generation
-        3. **Click "Generate Caption & Detect Pneumonia"** to analyze the image
-        4. **View results** with caption, pneumonia detection, and confidence
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col_info2:
-        st.markdown('<div class="info-box">', unsafe_allow_html=True)
-        st.markdown("""
-        ### 🎛️ Features:
-        - **Image Captioning**: Generates medical descriptions using DenseNet121
-        - **Pneumonia Detection**: Uses MobileNetV2 to detect pneumonia with confidence
-        - **Dual Analysis**: Both caption and diagnosis in one analysis
-        
-        ### 💡 Tips:
-        - Works best with chest X-ray images
-        - Confidence shows model certainty
-        - Red alert for pneumonia, green for normal
-        """)
-        st.markdown('</div>', unsafe_allow_html=True)
+    Upload a chest X-ray image above to get started.
+    """)
 
 if __name__ == "__main__":
     main()
