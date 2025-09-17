@@ -20,24 +20,129 @@ st.set_page_config(
 st.markdown("""
 <style>
     .main-header {
-        font-size: 3rem;
-        color: #1f77b4;
+        font-size: 3.5rem;
+        color: #2E86AB;
         text-align: center;
         margin-bottom: 2rem;
+        font-weight: 700;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     }
+    
+    .sub-header {
+        font-size: 1.5rem;
+        color: #2E86AB;
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+    
     .caption-box {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #1f77b4;
-        margin: 1rem 0;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 15px;
+        margin: 2rem 0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        border: none;
+        font-size: 1.2rem;
+        line-height: 1.6;
+        text-align: center;
+        font-weight: 500;
     }
+    
     .parameter-box {
-        background-color: #fff3cd;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        border-left: 4px solid #ffc107;
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
         margin: 1rem 0;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .image-container {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        margin: 2rem 0;
+        text-align: center;
+    }
+    
+    .result-container {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        margin: 2rem 0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+    }
+    
+    .info-box {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .success-box {
+        background: linear-gradient(135deg, #a8e6cf 0%, #88d8a3 100%);
+        color: #2d5a3d;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        font-weight: 600;
+    }
+    
+    .warning-box {
+        background: linear-gradient(135deg, #ffd89b 0%, #19547b 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    
+    .stButton > button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 25px;
+        padding: 0.5rem 2rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+        transition: all 0.3s ease;
+    }
+    
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+    }
+    
+    .stSelectbox > div > div {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .stFileUploader > div {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .stRadio > div {
+        background: white;
+        border-radius: 10px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .metric-container {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin: 0.5rem 0;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -165,7 +270,8 @@ def main():
     
     # Check for encodings.pkl file
     if encodings is None:
-        st.warning("⚠️ **encodings.pkl file not found!**")
+        st.markdown('<div class="warning-box">', unsafe_allow_html=True)
+        st.markdown("⚠️ **encodings.pkl file not found!**")
         st.markdown("""
         To use the full functionality of this app, you need to download the `encodings.pkl` file.
         
@@ -180,9 +286,9 @@ def main():
         gdown 1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe
         ```
         """)
-        st.markdown("---")
+        st.markdown('</div>', unsafe_allow_html=True)
     else:
-        st.success(f"✅ **encodings.pkl loaded successfully!** ({len(encodings)} image encodings available)")
+        st.markdown(f'<div class="success-box">✅ **encodings.pkl loaded successfully!** ({len(encodings)} image encodings available)</div>', unsafe_allow_html=True)
     
     # Sidebar for parameters
     st.sidebar.markdown("## 🎛️ Generation Parameters")
@@ -212,84 +318,45 @@ def main():
         help="Number of top probable words to sample from"
     )
     
-    # Main content area
-    col1, col2 = st.columns([1, 1])
+    # Image source selection
+    st.markdown('<h2 class="sub-header">📤 Choose Your Image</h2>', unsafe_allow_html=True)
     
-    with col1:
-        st.markdown("## 📤 Upload Image")
-        
-        # If encodings are available, provide option to use pre-encoded images
-        if encodings is not None:
-            st.markdown("### 🎯 Choose Image Source")
-            image_source = st.radio(
-                "Select image source:",
-                ["Upload new image", "Use pre-encoded image"],
-                help="Choose between uploading a new image or using a pre-encoded image from the dataset"
-            )
-            
-            if image_source == "Use pre-encoded image":
-                # Display list of available images
-                image_names = list(encodings.keys())
-                selected_image = st.selectbox(
-                    "Select an image:",
-                    image_names,
-                    help="Choose from pre-encoded images"
-                )
-                
-                if selected_image:
-                    st.markdown("### 📷 Selected Image")
-                    # Note: This assumes the images are in a specific directory
-                    # You may need to adjust the path based on your setup
-                    st.info(f"Selected: {selected_image}")
-                    st.markdown("**Note:** To display the actual image, you'll need to have the image files in your project directory.")
-                    
-                    # Generate caption for pre-encoded image
-                    if st.button("🎯 Generate Caption for Selected Image", type="primary"):
-                        with st.spinner("Generating caption..."):
-                            image_vector = encodings[selected_image].reshape((1, -1))
-                            caption = generate_caption(
-                                model, image_vector, words_to_index, index_to_words,
-                                max_steps=max_steps, temperature=temperature, top_k=top_k
-                            )
-                            
-                            # Display results
-                            st.markdown("### 🎯 Generated Caption")
-                            st.markdown(f'<div class="caption-box"><strong>{caption}</strong></div>', 
-                                      unsafe_allow_html=True)
-                            
-                            # Show parameters used
-                            st.markdown("### ⚙️ Parameters Used")
-                            st.markdown(f"""
-                            <div class="parameter-box">
-                            <strong>Max Steps:</strong> {max_steps}<br>
-                            <strong>Temperature:</strong> {temperature}<br>
-                            <strong>Top-K:</strong> {top_k}
-                            </div>
-                            """, unsafe_allow_html=True)
-        else:
-            image_source = "Upload new image"
-        
-        # File uploader (only show if uploading new image)
-        if image_source == "Upload new image":
-            uploaded_file = st.file_uploader(
-                "Choose an image file",
-                type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
-                help="Upload an image to generate a caption"
-            )
-        else:
-            uploaded_file = None
+    # If encodings are available, provide option to use pre-encoded images
+    if encodings is not None:
+        image_source = st.radio(
+            "Select image source:",
+            ["Upload new image", "Use pre-encoded image"],
+            help="Choose between uploading a new image or using a pre-encoded image from the dataset",
+            horizontal=True
+        )
+    else:
+        image_source = "Upload new image"
+    
+    # Initialize session state for results
+    if 'generated_caption' not in st.session_state:
+        st.session_state.generated_caption = None
+    if 'display_image' not in st.session_state:
+        st.session_state.display_image = None
+    if 'image_name' not in st.session_state:
+        st.session_state.image_name = None
+    
+    # Handle different image sources
+    if image_source == "Upload new image":
+        uploaded_file = st.file_uploader(
+            "Choose an image file",
+            type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
+            help="Upload an image to generate a caption"
+        )
         
         if uploaded_file is not None:
-            # Display uploaded image
-            st.markdown("### 📷 Uploaded Image")
-            image = Image.open(uploaded_file)
-            st.image(image, caption="Uploaded Image", use_column_width=True)
+            st.session_state.display_image = Image.open(uploaded_file)
+            st.session_state.image_name = uploaded_file.name
             
             # Generate caption button
-            if st.button("🎯 Generate Caption", type="primary"):
-                with st.spinner("Generating caption..."):
+            if st.button("🎯 Generate Caption", type="primary", use_container_width=True):
+                with st.spinner("🔄 Generating caption..."):
                     # Preprocess image
-                    image_features, display_image = preprocess_image(uploaded_file)
+                    image_features, _ = preprocess_image(uploaded_file)
                     
                     if image_features is not None:
                         # Generate caption
@@ -297,52 +364,104 @@ def main():
                             model, image_features, words_to_index, index_to_words,
                             max_steps=max_steps, temperature=temperature, top_k=top_k
                         )
-                        
-                        # Display results
-                        st.markdown("### 🎯 Generated Caption")
-                        st.markdown(f'<div class="caption-box"><strong>{caption}</strong></div>', 
-                                  unsafe_allow_html=True)
-                        
-                        # Show parameters used
-                        st.markdown("### ⚙️ Parameters Used")
-                        st.markdown(f"""
-                        <div class="parameter-box">
-                        <strong>Max Steps:</strong> {max_steps}<br>
-                        <strong>Temperature:</strong> {temperature}<br>
-                        <strong>Top-K:</strong> {top_k}
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.session_state.generated_caption = caption
+                        st.rerun()
     
-    with col2:
-        st.markdown("## ℹ️ About This App")
+    else:  # Use pre-encoded image
+        image_names = list(encodings.keys())
+        selected_image = st.selectbox(
+            "Select an image:",
+            image_names,
+            help="Choose from pre-encoded images"
+        )
         
+        if selected_image:
+            st.session_state.image_name = selected_image
+            st.markdown(f'<div class="info-box">📷 <strong>Selected:</strong> {selected_image}</div>', unsafe_allow_html=True)
+            
+            # Generate caption for pre-encoded image
+            if st.button("🎯 Generate Caption for Selected Image", type="primary", use_container_width=True):
+                with st.spinner("🔄 Generating caption..."):
+                    image_vector = encodings[selected_image].reshape((1, -1))
+                    caption = generate_caption(
+                        model, image_vector, words_to_index, index_to_words,
+                        max_steps=max_steps, temperature=temperature, top_k=top_k
+                    )
+                    st.session_state.generated_caption = caption
+                    st.rerun()
+    
+    # Display results section
+    if st.session_state.generated_caption is not None:
+        st.markdown("---")
+        st.markdown('<h2 class="sub-header">🎯 Generated Caption</h2>', unsafe_allow_html=True)
+        
+        # Create a beautiful result container
+        st.markdown('<div class="result-container">', unsafe_allow_html=True)
+        
+        # Display image and caption side by side
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            st.markdown('<div class="image-container">', unsafe_allow_html=True)
+            if st.session_state.display_image is not None:
+                st.image(st.session_state.display_image, caption=f"📷 {st.session_state.image_name}", use_column_width=True)
+            else:
+                st.markdown(f"<h4>📷 {st.session_state.image_name}</h4>", unsafe_allow_html=True)
+                st.info("Image preview not available for pre-encoded images")
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown(f'<div class="caption-box"><strong>"{st.session_state.generated_caption}"</strong></div>', unsafe_allow_html=True)
+            
+            # Show parameters used
+            st.markdown("### ⚙️ Generation Parameters")
+            col_param1, col_param2, col_param3 = st.columns(3)
+            
+            with col_param1:
+                st.metric("Max Steps", max_steps)
+            with col_param2:
+                st.metric("Temperature", f"{temperature:.1f}")
+            with col_param3:
+                st.metric("Top-K", top_k)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Add a new generation button
+        if st.button("🔄 Generate New Caption", use_container_width=True):
+            st.session_state.generated_caption = None
+            st.rerun()
+    
+    # Information section
+    st.markdown("---")
+    st.markdown('<h2 class="sub-header">ℹ️ About This App</h2>', unsafe_allow_html=True)
+    
+    col_info1, col_info2 = st.columns([1, 1])
+    
+    with col_info1:
+        st.markdown('<div class="info-box">', unsafe_allow_html=True)
         st.markdown("""
-        This application uses a deep learning model to generate captions for images.
-        
-        ### How it works:
-        1. **Upload an image** using the file uploader
+        ### 🚀 How it works:
+        1. **Choose an image** by uploading or selecting from pre-encoded images
         2. **Adjust parameters** in the sidebar to control caption generation
         3. **Click "Generate Caption"** to create a description
-        
-        ### Parameters:
-        - **Maximum Words**: Controls the maximum length of generated captions
-        - **Temperature**: Controls randomness (lower = more focused, higher = more creative)
-        - **Top-K Sampling**: Limits word selection to top K most probable words
-        
-        ### Tips:
-        - Try different temperature values for varied results
-        - Lower temperature gives more consistent, focused captions
-        - Higher temperature produces more creative, diverse captions
+        4. **View results** with the image and caption displayed together
         """)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col_info2:
+        st.markdown('<div class="info-box">', unsafe_allow_html=True)
+        st.markdown("""
+        ### 🎛️ Parameters:
+        - **Maximum Words**: Controls caption length (5-50 words)
+        - **Temperature**: Controls randomness (0.1-2.0)
+        - **Top-K Sampling**: Limits word selection (1-20)
         
-        st.markdown("---")
-        st.markdown("### 🔧 Model Information")
-        st.info("""
-        **Model**: Pre-trained image captioning model
-        **Input**: RGB images (224x224 pixels)
-        **Output**: Natural language captions
-        **Architecture**: CNN + LSTM/Transformer based
+        ### 💡 Tips:
+        - Lower temperature = more focused captions
+        - Higher temperature = more creative captions
+        - Try different combinations for varied results
         """)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
