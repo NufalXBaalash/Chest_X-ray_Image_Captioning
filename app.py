@@ -161,6 +161,16 @@ def load_feature_extractor():
         return None
 
 @st.cache_resource
+def load_pneumonia_model():
+    """Load MobileNetV2 pneumonia detection model"""
+    try:
+        pneumonia_model = load_model('MobileNetV2_model.keras', compile=False)
+        return pneumonia_model
+    except Exception as e:
+        st.warning(f"Pneumonia detection model not found: {str(e)}")
+        return None
+
+@st.cache_resource
 def load_model_and_data():
     """Load the trained model and tokenizer data with caching"""
     try:
@@ -221,6 +231,59 @@ def preprocess_image(uploaded_file):
         return features, image
     except Exception as e:
         st.error(f"Error preprocessing image: {str(e)}")
+        return None, None
+
+def preprocess_image_for_pneumonia(uploaded_file):
+    """Preprocess uploaded image for pneumonia detection"""
+    try:
+        # Read image using PIL
+        image = Image.open(uploaded_file)
+        
+        # Convert to RGB if necessary
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Resize image to (224, 224) for MobileNetV2
+        image = image.resize((224, 224))
+        
+        # Convert to numpy array
+        image_array = np.array(image)
+        
+        # Normalize to [0, 1] range
+        image_array = image_array.astype(np.float32) / 255.0
+        
+        # Add batch dimension
+        image_array = np.expand_dims(image_array, axis=0)
+        
+        return image_array, image
+    except Exception as e:
+        st.error(f"Error preprocessing image for pneumonia detection: {str(e)}")
+        return None, None
+
+def detect_pneumonia(pneumonia_model, image_array):
+    """Detect pneumonia in the image"""
+    try:
+        if pneumonia_model is None:
+            return None, None
+        
+        # Make prediction
+        prediction = pneumonia_model.predict(image_array, verbose=0)
+        
+        # Get probability of pneumonia (assuming binary classification: 0=Normal, 1=Pneumonia)
+        pneumonia_prob = prediction[0][0] if len(prediction[0]) == 1 else prediction[0][1]
+        normal_prob = 1 - pneumonia_prob
+        
+        # Determine diagnosis
+        if pneumonia_prob > 0.5:
+            diagnosis = "Pneumonia Detected"
+            confidence = pneumonia_prob
+        else:
+            diagnosis = "Normal (No Pneumonia)"
+            confidence = normal_prob
+        
+        return diagnosis, confidence
+    except Exception as e:
+        st.error(f"Error in pneumonia detection: {str(e)}")
         return None, None
 
 def generate_caption(model, image_features, words_to_index, index_to_words, 
@@ -324,13 +387,20 @@ def main():
     st.markdown('<h1 class="main-header">🖼️ Image Caption Generator</h1>', unsafe_allow_html=True)
     st.markdown("---")
     
-    # Load model and data
-    with st.spinner("Loading model and tokenizer..."):
+    # Load models and data
+    with st.spinner("Loading models and tokenizer..."):
         model, words_to_index, index_to_words, encodings = load_model_and_data()
+        pneumonia_model = load_pneumonia_model()
     
     if model is None:
-        st.error("Failed to load model. Please check that all required files are present.")
+        st.error("Failed to load caption model. Please check that all required files are present.")
         st.stop()
+    
+    # Show pneumonia model status
+    if pneumonia_model is not None:
+        st.success("✅ Pneumonia detection model loaded successfully!")
+    else:
+        st.warning("⚠️ Pneumonia detection model not available. Only caption generation will work.")
     
     # Check for encodings.pkl file
     if encodings is None:
@@ -403,6 +473,10 @@ def main():
         st.session_state.display_image = None
     if 'image_name' not in st.session_state:
         st.session_state.image_name = None
+    if 'pneumonia_diagnosis' not in st.session_state:
+        st.session_state.pneumonia_diagnosis = None
+    if 'pneumonia_confidence' not in st.session_state:
+        st.session_state.pneumonia_confidence = None
     
     # Handle different image sources
     if image_source == "Upload new image":
@@ -419,11 +493,11 @@ def main():
             # Show info notice
             st.markdown('<div class="info-box">ℹ️ <strong>Note:</strong> Uploaded images are processed using the same DenseNet121 feature extraction as the training data. This should produce accurate captions for medical images.</div>', unsafe_allow_html=True)
             
-            # Generate caption button
-            if st.button("🎯 Generate Caption", type="primary", use_container_width=True):
-                with st.spinner("🔄 Generating caption..."):
+            # Generate caption and detect pneumonia button
+            if st.button("🎯 Generate Caption & Detect Pneumonia", type="primary", use_container_width=True):
+                with st.spinner("🔄 Processing image..."):
                     try:
-                        # Preprocess image
+                        # Preprocess image for caption generation
                         image_features, _ = preprocess_image(uploaded_file)
                         
                         if image_features is not None:
@@ -433,11 +507,20 @@ def main():
                                 max_steps=max_steps, temperature=temperature, top_k=top_k
                             )
                             st.session_state.generated_caption = caption
+                            
+                            # Detect pneumonia if model is available
+                            if pneumonia_model is not None:
+                                pneumonia_array, _ = preprocess_image_for_pneumonia(uploaded_file)
+                                if pneumonia_array is not None:
+                                    diagnosis, confidence = detect_pneumonia(pneumonia_model, pneumonia_array)
+                                    st.session_state.pneumonia_diagnosis = diagnosis
+                                    st.session_state.pneumonia_confidence = confidence
+                            
                             st.rerun()
                         else:
                             st.error("Failed to preprocess the image. Please try again.")
                     except Exception as e:
-                        st.error(f"Error generating caption: {str(e)}")
+                        st.error(f"Error processing image: {str(e)}")
                         st.error("This might be because the model expects pre-computed image features. Try using a pre-encoded image instead.")
     
     else:  # Use pre-encoded image
@@ -469,12 +552,12 @@ def main():
     # Display results section
     if st.session_state.generated_caption is not None:
         st.markdown("---")
-        st.markdown('<h2 class="sub-header">🎯 Generated Caption</h2>', unsafe_allow_html=True)
+        st.markdown('<h2 class="sub-header">🎯 Analysis Results</h2>', unsafe_allow_html=True)
         
         # Create a beautiful result container
         st.markdown('<div class="result-container">', unsafe_allow_html=True)
         
-        # Display image and caption side by side
+        # Display image and results side by side
         col1, col2 = st.columns([1, 1])
         
         with col1:
@@ -487,7 +570,22 @@ def main():
             st.markdown('</div>', unsafe_allow_html=True)
         
         with col2:
+            # Display caption
+            st.markdown("### 📝 Generated Caption")
             st.markdown(f'<div class="caption-box"><strong>"{st.session_state.generated_caption}"</strong></div>', unsafe_allow_html=True)
+            
+            # Display pneumonia detection if available
+            if st.session_state.pneumonia_diagnosis is not None:
+                st.markdown("### 🏥 Pneumonia Detection")
+                if "Pneumonia" in st.session_state.pneumonia_diagnosis:
+                    st.error(f"🚨 **{st.session_state.pneumonia_diagnosis}**")
+                else:
+                    st.success(f"✅ **{st.session_state.pneumonia_diagnosis}**")
+                
+                # Show confidence as a progress bar
+                confidence_percent = st.session_state.pneumonia_confidence * 100
+                st.progress(confidence_percent / 100)
+                st.metric("Confidence", f"{confidence_percent:.1f}%")
             
             # Show parameters used
             st.markdown("### ⚙️ Generation Parameters")
@@ -503,8 +601,10 @@ def main():
         st.markdown('</div>', unsafe_allow_html=True)
         
         # Add a new generation button
-        if st.button("🔄 Generate New Caption", use_container_width=True):
+        if st.button("🔄 Analyze New Image", use_container_width=True):
             st.session_state.generated_caption = None
+            st.session_state.pneumonia_diagnosis = None
+            st.session_state.pneumonia_confidence = None
             st.rerun()
     
     # Information section
@@ -519,23 +619,23 @@ def main():
         ### 🚀 How it works:
         1. **Choose an image** by uploading or selecting from pre-encoded images
         2. **Adjust parameters** in the sidebar to control caption generation
-        3. **Click "Generate Caption"** to create a description
-        4. **View results** with the image and caption displayed together
+        3. **Click "Generate Caption & Detect Pneumonia"** to analyze the image
+        4. **View results** with caption, pneumonia detection, and confidence
         """)
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col_info2:
         st.markdown('<div class="info-box">', unsafe_allow_html=True)
         st.markdown("""
-        ### 🎛️ Parameters:
-        - **Maximum Words**: Controls caption length (5-50 words)
-        - **Temperature**: Controls randomness (0.1-2.0)
-        - **Top-K Sampling**: Limits word selection (1-20)
+        ### 🎛️ Features:
+        - **Image Captioning**: Generates medical descriptions using DenseNet121
+        - **Pneumonia Detection**: Uses MobileNetV2 to detect pneumonia with confidence
+        - **Dual Analysis**: Both caption and diagnosis in one analysis
         
         ### 💡 Tips:
-        - Lower temperature = more focused captions
-        - Higher temperature = more creative captions
-        - Try different combinations for varied results
+        - Works best with chest X-ray images
+        - Confidence shows model certainty
+        - Red alert for pneumonia, green for normal
         """)
         st.markdown('</div>', unsafe_allow_html=True)
 
