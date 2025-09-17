@@ -153,7 +153,7 @@ def load_model_and_data():
     try:
         # Load trained model - try both possible names
         try:
-            model = load_model('model_2.keras', compile=False)
+            model = load_model('model.keras', compile=False)
         except:
             model = load_model('model.keras', compile=False)
         
