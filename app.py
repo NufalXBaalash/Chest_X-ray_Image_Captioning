@@ -281,6 +281,9 @@ def detect_pneumonia(pneumonia_model, image_array):
             diagnosis = "Normal (No Pneumonia)"
             confidence = normal_prob
         
+        # Ensure confidence is between 0 and 1
+        confidence = min(max(confidence, 0.0), 1.0)
+        
         return diagnosis, confidence
     except Exception as e:
         st.error(f"Error in pneumonia detection: {str(e)}")
@@ -584,7 +587,9 @@ def main():
                 
                 # Show confidence as a progress bar
                 confidence_percent = st.session_state.pneumonia_confidence * 100
-                st.progress(confidence_percent / 100)
+                # Ensure progress value is between 0 and 1
+                progress_value = min(max(st.session_state.pneumonia_confidence, 0.0), 1.0)
+                st.progress(progress_value)
                 st.metric("Confidence", f"{confidence_percent:.1f}%")
             
             # Show parameters used
