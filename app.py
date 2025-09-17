@@ -5,147 +5,50 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from keras.models import load_model
 from PIL import Image
-import os
 import io
-import requests
-import gdown
+import os
+import cv2
 
-# Configure Streamlit page
+# Page configuration
 st.set_page_config(
-    page_title="Medical Image Captioning",
-    page_icon="🏥",
+    page_title="Image Caption Generator",
+    page_icon="🖼️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Function to download encodings from Google Drive
-def download_encodings_from_drive():
-    """Download encodings.pkl from Google Drive if not present locally."""
-    encodings_path = "encodings.pkl"
-    
-    if not os.path.exists(encodings_path):
-        st.info("Encodings file not found locally. Downloading from Google Drive...")
-        
-        # Google Drive file ID from the shared link
-        file_id = "1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe"
-        
-        try:
-            # Create a progress bar
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            status_text.text("Downloading encodings file...")
-            progress_bar.progress(25)
-            
-            # Method 1: Try gdown first
-            try:
-                import gdown
-                url = f"https://drive.google.com/uc?id={file_id}&export=download"
-                gdown.download(url, encodings_path, quiet=False)
-                progress_bar.progress(75)
-                
-            except Exception as gdown_error:
-                st.warning(f"gdown failed: {gdown_error}. Trying alternative method...")
-                progress_bar.progress(50)
-                
-                # Method 2: Direct download with session
-                session = requests.Session()
-                response = session.get(f"https://drive.google.com/uc?id={file_id}", stream=True)
-                
-                # Check if we got a confirmation page
-                if 'download_warning' in response.text or response.status_code != 200:
-                    # Try to get the confirmation token
-                    for line in response.text.split('\n'):
-                        if 'confirm=' in line and 'download' in line:
-                            import re
-                            confirm_token = re.search(r'confirm=([0-9A-Za-z_]+)', line)
-                            if confirm_token:
-                                confirm_token = confirm_token.group(1)
-                                break
-                    else:
-                        # Try a different approach
-                        response = session.get(
-                            f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t",
-                            stream=True
-                        )
-                
-                # Download the file
-                if response.status_code == 200:
-                    with open(encodings_path, 'wb') as f:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            if chunk:
-                                f.write(chunk)
-                else:
-                    raise Exception(f"Failed to download: HTTP {response.status_code}")
-            
-            progress_bar.progress(90)
-            
-            # Validate the downloaded file
-            if os.path.exists(encodings_path):
-                file_size = os.path.getsize(encodings_path)
-                
-                if file_size < 1000:  # File too small, likely an error page
-                    # Read first few bytes to check if it's HTML
-                    with open(encodings_path, 'rb') as f:
-                        first_bytes = f.read(100)
-                    
-                    if b'<' in first_bytes or b'html' in first_bytes.lower():
-                        os.remove(encodings_path)  # Remove the invalid file
-                        raise Exception("Downloaded file appears to be HTML, not a pickle file. The Google Drive link might require permission.")
-                
-                # Try to load the pickle file to validate it
-                try:
-                    with open(encodings_path, 'rb') as f:
-                        pickle.load(f)
-                    progress_bar.progress(100)
-                    status_text.text("Download completed and validated!")
-                    st.success(f"Successfully downloaded encodings.pkl ({file_size:,} bytes)")
-                    
-                except pickle.UnpicklingError:
-                    os.remove(encodings_path)
-                    raise Exception("Downloaded file is not a valid pickle file.")
-                    
-            else:
-                raise Exception("File was not created after download attempt.")
-                
-        except Exception as e:
-            st.error(f"Failed to download encodings file: {e}")
-            st.error("Please try one of these solutions:")
-            st.error("1. Make sure the Google Drive file is publicly accessible")
-            st.error("2. Download the file manually from the Google Drive link")
-            st.error("3. Place the encodings.pkl file in the same directory as this app")
-            
-            st.markdown("### Manual Download Instructions:")
-            st.markdown("1. Go to: https://drive.google.com/file/d/1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe/view?usp=sharing")
-            st.markdown("2. Click 'Download' or 'Download anyway' if warned")
-            st.markdown("3. Save the file as 'encodings.pkl' in your app directory")
-            st.markdown("4. Refresh this page")
-            
-            st.stop()
-    
-    else:
-        # File exists, validate it
-        try:
-            with open(encodings_path, 'rb') as f:
-                pickle.load(f)
-            st.sidebar.info("✅ Using cached encodings.pkl")
-        except:
-            st.error("Existing encodings.pkl file is corrupted. Please delete it and restart the app.")
-            st.stop()
-    
-    return encodings_path
+# Custom CSS for better styling
+st.markdown("""
+<style>
+    .main-header {
+        font-size: 3rem;
+        color: #1f77b4;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .caption-box {
+        background-color: #f0f2f6;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #1f77b4;
+        margin: 1rem 0;
+    }
+    .parameter-box {
+        background-color: #fff3cd;
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border-left: 4px solid #ffc107;
+        margin: 1rem 0;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-# Cache the model and data loading functions
 @st.cache_resource
 def load_model_and_data():
-    """Load the trained model and preprocessing data."""
+    """Load the trained model and tokenizer data with caching"""
     try:
         # Load trained model
         model = load_model('model.keras', compile=False)
-        
-        # Download and load image features
-        encodings_path = download_encodings_from_drive()
-        features = pickle.load(open(encodings_path, "rb"))
         
         # Load tokenizer mappings
         with open("wordtoix.pkl", "rb") as f:
@@ -154,61 +57,70 @@ def load_model_and_data():
         with open("ixtoword.pkl", "rb") as f:
             index_to_words = pickle.load(f)
         
-        return model, features, words_to_index, index_to_words
-    except FileNotFoundError as e:
-        st.error(f"Model or data files not found: {e}")
-        st.error("Please ensure the following files are in your app directory:")
-        st.error("- model_2.keras")
-        st.error("- wordtoix.pkl") 
-        st.error("- ixtoword.pkl")
-        st.error("- encodings.pkl (will be downloaded automatically)")
-        st.stop()
+        # Load image encodings if available
+        encodings = None
+        if os.path.exists("encodings.pkl"):
+            with open("encodings.pkl", "rb") as f:
+                encodings = pickle.load(f)
+        
+        return model, words_to_index, index_to_words, encodings
     except Exception as e:
-        st.error(f"Error loading model or data: {e}")
-        st.stop()
+        st.error(f"Error loading model or tokenizer: {str(e)}")
+        return None, None, None, None
 
-@st.cache_data
-def load_ground_truth_captions():
-    """Load ground truth captions if available."""
+def preprocess_image(uploaded_file):
+    """Preprocess uploaded image to match model input requirements"""
     try:
-        # You'll need to replace this with your actual ground truth data loading
-        # This is a placeholder - adjust based on your data structure
-        with open("ground_truth_captions.pkl", "rb") as f:
-            ground_truth = pickle.load(f)
-        return ground_truth
-    except:
-        return None
+        # Read image
+        image = Image.open(uploaded_file)
+        
+        # Convert to RGB if necessary
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Resize image (adjust size as needed for your model)
+        image = image.resize((224, 224))  # Common size for image captioning models
+        
+        # Convert to numpy array and normalize
+        image_array = np.array(image) / 255.0
+        
+        # Reshape for model input (1, height, width, channels)
+        image_array = image_array.reshape(1, 224, 224, 3)
+        
+        return image_array, image
+    except Exception as e:
+        st.error(f"Error preprocessing image: {str(e)}")
+        return None, None
 
-def Image_Caption(picture, model, words_to_index, index_to_words, 
-                 max_length=124, max_steps=25, temperature=0.7, top_k=5):
+def generate_caption(model, image_features, words_to_index, index_to_words, 
+                    max_steps=25, temperature=0.7, top_k=5, max_length=124):
     """
     Generate a caption for a given image feature vector.
-    This is the working version that avoids array comparison issues.
     
     Args:
-        picture (np.array): Precomputed image feature vector, shape (1, feature_dim)
-        model: Trained caption generation model
-        words_to_index: Dictionary mapping words to indices
-        index_to_words: Dictionary mapping indices to words
-        max_length (int): Maximum sequence length
-        max_steps (int): Maximum number of words to generate
-        temperature (float): Temperature for sampling (controls randomness)
-        top_k (int): Number of top probable words to sample from
+        model: Trained captioning model
+        image_features: Preprocessed image features
+        words_to_index: Word to index mapping
+        index_to_words: Index to word mapping
+        max_steps: Maximum number of words to generate
+        temperature: Temperature for sampling (controls randomness)
+        top_k: Number of top probable words to sample from
+        max_length: Maximum sequence length
     
     Returns:
         str: Generated caption
     """
-    in_text = 'startseq'
-    generated_words = []
+    try:
+        in_text = 'startseq'
+        generated_words = []
 
-    for _ in range(max_steps):
-        try:
+        for _ in range(max_steps):
             # Convert current text to sequence
             sequence = [words_to_index[w] for w in in_text.split() if w in words_to_index]
             sequence = pad_sequences([sequence], maxlen=max_length, padding='pre')
 
             # Predict next word probabilities
-            yhat = model([picture, sequence], training=False)
+            yhat = model([image_features, sequence], training=False)
             probabilities = yhat.numpy().ravel()
 
             # Temperature scaling
@@ -220,209 +132,218 @@ def Image_Caption(picture, model, words_to_index, index_to_words,
             top_probs = probabilities[top_indices] / np.sum(probabilities[top_indices])
             yhat_index = np.random.choice(top_indices, p=top_probs)
 
-            # Ensure yhat_index is a scalar
-            if hasattr(yhat_index, 'item'):
-                yhat_index = yhat_index.item()
-            elif hasattr(yhat_index, '__len__') and len(yhat_index) > 0:
-                yhat_index = yhat_index[0]
-
             word = index_to_words[yhat_index]
 
-            # Ensure word is a string, not an array
-            if hasattr(word, 'item'):
-                word = word.item()
-            elif hasattr(word, '__len__') and not isinstance(word, str):
-                word = str(word)
-
-            # Stop conditions - use explicit string comparisons
-            if str(word) == 'endseq':
+            # Stop conditions
+            if word == 'endseq':
                 break
-            if str(word) == 'xxxx':  # skip placeholder tokens
+            if word == 'xxxx':  # skip placeholder tokens
                 continue
-                
             # Avoid repeating the same word 3 times consecutively
-            if (len(generated_words) >= 2 and 
-                str(word) == str(generated_words[-1]) and 
-                str(word) == str(generated_words[-2])):
+            if len(generated_words) >= 2 and word == generated_words[-1] == generated_words[-2]:
                 break
 
-            generated_words.append(str(word))
-            in_text += ' ' + str(word)
-            
-        except Exception as e:
-            print(f"Error in caption generation step: {e}")
-            break
+            generated_words.append(word)
+            in_text += ' ' + word
 
-    return ' '.join(generated_words)
+        return ' '.join(generated_words)
+    except Exception as e:
+        st.error(f"Error generating caption: {str(e)}")
+        return "Error generating caption"
 
 def main():
-    st.title("🏥 Medical Image Captioning System")
-    st.markdown("Generate automated captions for chest X-ray images using deep learning")
+    # Header
+    st.markdown('<h1 class="main-header">🖼️ Image Caption Generator</h1>', unsafe_allow_html=True)
+    st.markdown("---")
     
-    # Load model and data (will auto-download encodings if needed)
-    with st.spinner("Loading model and data..."):
-        model, features, words_to_index, index_to_words = load_model_and_data()
-        ground_truth = load_ground_truth_captions()
+    # Load model and data
+    with st.spinner("Loading model and tokenizer..."):
+        model, words_to_index, index_to_words, encodings = load_model_and_data()
     
-    st.sidebar.success(f"✅ Model loaded successfully!")
-    st.sidebar.info(f"📊 {len(features)} images in dataset")
+    if model is None:
+        st.error("Failed to load model. Please check that all required files are present.")
+        st.stop()
+    
+    # Check for encodings.pkl file
+    if encodings is None:
+        st.warning("⚠️ **encodings.pkl file not found!**")
+        st.markdown("""
+        To use the full functionality of this app, you need to download the `encodings.pkl` file.
+        
+        **Download Instructions:**
+        1. Click on this link: [Download encodings.pkl](https://drive.google.com/file/d/1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe/view?usp=drive_link)
+        2. Download the file and place it in your project directory
+        3. Refresh this page
+        
+        **Alternative method using command line:**
+        ```bash
+        pip install gdown
+        gdown 1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe
+        ```
+        """)
+        st.markdown("---")
+    else:
+        st.success(f"✅ **encodings.pkl loaded successfully!** ({len(encodings)} image encodings available)")
     
     # Sidebar for parameters
-    st.sidebar.header("Caption Generation Parameters")
-    max_steps = st.sidebar.slider("Max Steps", min_value=10, max_value=50, value=25, 
-                                  help="Maximum number of words to generate")
-    temperature = st.sidebar.slider("Temperature", min_value=0.1, max_value=2.0, value=0.7, step=0.1,
-                                    help="Controls randomness (lower = more focused)")
-    top_k = st.sidebar.slider("Top-K", min_value=1, max_value=20, value=5,
-                              help="Number of top words to sample from")
+    st.sidebar.markdown("## 🎛️ Generation Parameters")
     
-    # Debug mode toggle
-    debug_mode = st.sidebar.checkbox("Debug Mode", value=False, help="Show detailed debugging information")
+    max_steps = st.sidebar.slider(
+        "Maximum Words", 
+        min_value=5, 
+        max_value=50, 
+        value=25, 
+        help="Maximum number of words to generate"
+    )
+    
+    temperature = st.sidebar.slider(
+        "Temperature", 
+        min_value=0.1, 
+        max_value=2.0, 
+        value=0.7, 
+        step=0.1,
+        help="Controls randomness (lower = more focused, higher = more creative)"
+    )
+    
+    top_k = st.sidebar.slider(
+        "Top-K Sampling", 
+        min_value=1, 
+        max_value=20, 
+        value=5, 
+        help="Number of top probable words to sample from"
+    )
     
     # Main content area
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.header("📸 Image Selection")
+        st.markdown("## 📤 Upload Image")
         
-        # Method selection
-        method = st.radio("Choose input method:", 
-                         ["Select from dataset", "Upload custom image", "Random selection"])
-        
-        if method == "Select from dataset":
-            if features:
-                image_list = list(features.keys())
-                selected_idx = st.selectbox("Select image index:", 
-                                           range(len(image_list)), 
-                                           index=min(2000, len(image_list)-1))
-                pic = image_list[selected_idx]
-                image_vector = features[pic].reshape((1, -1))
+        # If encodings are available, provide option to use pre-encoded images
+        if encodings is not None:
+            st.markdown("### 🎯 Choose Image Source")
+            image_source = st.radio(
+                "Select image source:",
+                ["Upload new image", "Use pre-encoded image"],
+                help="Choose between uploading a new image or using a pre-encoded image from the dataset"
+            )
+            
+            if image_source == "Use pre-encoded image":
+                # Display list of available images
+                image_names = list(encodings.keys())
+                selected_image = st.selectbox(
+                    "Select an image:",
+                    image_names,
+                    help="Choose from pre-encoded images"
+                )
                 
-                # Display image info
-                st.info(f"Selected image: {pic}")
-                
-                # Try to load and display the image
-                images_dir = st.text_input("Images directory path:", 
-                                          value="/kaggle/input/chest-xrays-indiana-university/images/images_normalized/")
-                
-                if os.path.exists(images_dir + pic):
-                    img_array = plt.imread(images_dir + pic)
-                    st.image(img_array, caption=f"Image: {pic}", use_column_width=True, clamp=True)
-                else:
-                    st.warning(f"Image file not found at: {images_dir + pic}")
-                    st.info("The system will still generate captions using precomputed features.")
-            else:
-                st.error("No precomputed features available")
-                
-        elif method == "Random selection":
-            if st.button("🎲 Generate Random Image"):
-                if features:
-                    random_idx = np.random.randint(0, len(features))
-                    pic = list(features.keys())[random_idx]
-                    image_vector = features[pic].reshape((1, -1))
-                    st.session_state['selected_pic'] = pic
-                    st.session_state['image_vector'] = image_vector
-                    st.success(f"Randomly selected: {pic}")
+                if selected_image:
+                    st.markdown("### 📷 Selected Image")
+                    # Note: This assumes the images are in a specific directory
+                    # You may need to adjust the path based on your setup
+                    st.info(f"Selected: {selected_image}")
+                    st.markdown("**Note:** To display the actual image, you'll need to have the image files in your project directory.")
                     
-            if 'selected_pic' in st.session_state:
-                pic = st.session_state['selected_pic']
-                image_vector = st.session_state['image_vector']
-                st.info(f"Current selection: {pic}")
+                    # Generate caption for pre-encoded image
+                    if st.button("🎯 Generate Caption for Selected Image", type="primary"):
+                        with st.spinner("Generating caption..."):
+                            image_vector = encodings[selected_image].reshape((1, -1))
+                            caption = generate_caption(
+                                model, image_vector, words_to_index, index_to_words,
+                                max_steps=max_steps, temperature=temperature, top_k=top_k
+                            )
+                            
+                            # Display results
+                            st.markdown("### 🎯 Generated Caption")
+                            st.markdown(f'<div class="caption-box"><strong>{caption}</strong></div>', 
+                                      unsafe_allow_html=True)
+                            
+                            # Show parameters used
+                            st.markdown("### ⚙️ Parameters Used")
+                            st.markdown(f"""
+                            <div class="parameter-box">
+                            <strong>Max Steps:</strong> {max_steps}<br>
+                            <strong>Temperature:</strong> {temperature}<br>
+                            <strong>Top-K:</strong> {top_k}
+                            </div>
+                            """, unsafe_allow_html=True)
+        else:
+            image_source = "Upload new image"
         
-        elif method == "Upload custom image":
-            st.warning("⚠️ Note: Custom image upload requires feature extraction with the same model used during training.")
-            uploaded_file = st.file_uploader("Choose an X-ray image...", 
-                                            type=['jpg', 'jpeg', 'png', 'dcm'])
-            if uploaded_file:
-                image = Image.open(uploaded_file)
-                st.image(image, caption="Uploaded Image", use_column_width=True)
-                st.error("Feature extraction for custom images is not implemented in this demo. Please use dataset images.")
-    
-    with col2:
-        st.header("📝 Generated Caption")
+        # File uploader (only show if uploading new image)
+        if image_source == "Upload new image":
+            uploaded_file = st.file_uploader(
+                "Choose an image file",
+                type=['png', 'jpg', 'jpeg', 'gif', 'bmp'],
+                help="Upload an image to generate a caption"
+            )
+        else:
+            uploaded_file = None
         
-        if st.button("🚀 Generate Caption", type="primary"):
-            if 'image_vector' in locals() or 'image_vector' in st.session_state:
-                try:
-                    current_vector = locals().get('image_vector') or st.session_state.get('image_vector')
-                    current_pic = locals().get('pic') or st.session_state.get('selected_pic')
+        if uploaded_file is not None:
+            # Display uploaded image
+            st.markdown("### 📷 Uploaded Image")
+            image = Image.open(uploaded_file)
+            st.image(image, caption="Uploaded Image", use_column_width=True)
+            
+            # Generate caption button
+            if st.button("🎯 Generate Caption", type="primary"):
+                with st.spinner("Generating caption..."):
+                    # Preprocess image
+                    image_features, display_image = preprocess_image(uploaded_file)
                     
-                    # Debug information
-                    if debug_mode:
-                        st.write(f"Debug: Image vector shape: {current_vector.shape}")
-                        st.write(f"Debug: Vocabulary size: {len(index_to_words)}")
-                        st.write(f"Debug: Using Image_Caption generator")
-                    
-                    with st.spinner("Generating caption..."):
-                        caption = Image_Caption(
-                            current_vector, model, words_to_index, index_to_words,
+                    if image_features is not None:
+                        # Generate caption
+                        caption = generate_caption(
+                            model, image_features, words_to_index, index_to_words,
                             max_steps=max_steps, temperature=temperature, top_k=top_k
                         )
-                    
-                    # Check if caption generation failed
-                    if "Caption generation failed" in caption:
-                        st.error(f"Caption generation error: {caption}")
-                    else:
-                        st.success("Caption generated successfully!")
-                        st.markdown(f"**Generated Caption:**")
-                        st.markdown(f'> "{caption}"')
                         
-                        # Show ground truth if available
-                        if ground_truth and current_pic in ground_truth:
-                            st.markdown("**Ground Truth Caption:**")
-                            st.markdown(f'> "{ground_truth[current_pic]}"')
+                        # Display results
+                        st.markdown("### 🎯 Generated Caption")
+                        st.markdown(f'<div class="caption-box"><strong>{caption}</strong></div>', 
+                                  unsafe_allow_html=True)
                         
-                        # Show statistics
-                        st.markdown("**Caption Statistics:**")
-                        word_count = len(caption.split()) if caption else 0
-                        st.metric("Word Count", word_count)
-                    
-                except Exception as e:
-                    st.error(f"Error in caption generation process: {e}")
-                    st.error("Please check that all model files are properly loaded.")
-                    
-                    # Additional debugging info
-                    try:
-                        st.write("Debug information:")
-                        st.write(f"- Model type: {type(model)}")
-                        st.write(f"- Words to index keys (first 10): {list(words_to_index.keys())[:10]}")
-                        st.write(f"- Index to words keys (first 10): {list(index_to_words.keys())[:10]}")
-                    except:
-                        st.write("Could not retrieve debug information")
-            else:
-                st.warning("Please select an image first!")
+                        # Show parameters used
+                        st.markdown("### ⚙️ Parameters Used")
+                        st.markdown(f"""
+                        <div class="parameter-box">
+                        <strong>Max Steps:</strong> {max_steps}<br>
+                        <strong>Temperature:</strong> {temperature}<br>
+                        <strong>Top-K:</strong> {top_k}
+                        </div>
+                        """, unsafe_allow_html=True)
     
-    # Additional information
-    st.markdown("---")
-    st.header("ℹ️ About This System")
-    
-    info_col1, info_col2 = st.columns(2)
-    
-    with info_col1:
+    with col2:
+        st.markdown("## ℹ️ About This App")
+        
         st.markdown("""
-        **Model Information:**
-        - Deep learning model for medical image captioning
-        - Trained on chest X-ray dataset
-        - Uses attention mechanism for caption generation
-        - Supports temperature-controlled sampling
+        This application uses a deep learning model to generate captions for images.
+        
+        ### How it works:
+        1. **Upload an image** using the file uploader
+        2. **Adjust parameters** in the sidebar to control caption generation
+        3. **Click "Generate Caption"** to create a description
+        
+        ### Parameters:
+        - **Maximum Words**: Controls the maximum length of generated captions
+        - **Temperature**: Controls randomness (lower = more focused, higher = more creative)
+        - **Top-K Sampling**: Limits word selection to top K most probable words
+        
+        ### Tips:
+        - Try different temperature values for varied results
+        - Lower temperature gives more consistent, focused captions
+        - Higher temperature produces more creative, diverse captions
         """)
-    
-    with info_col2:
-        st.markdown("""
-        **Parameters Guide:**
-        - **Max Steps**: Maximum words in caption
-        - **Temperature**: Lower = more focused, Higher = more creative
-        - **Top-K**: Number of candidate words to consider
+        
+        st.markdown("---")
+        st.markdown("### 🔧 Model Information")
+        st.info("""
+        **Model**: Pre-trained image captioning model
+        **Input**: RGB images (224x224 pixels)
+        **Output**: Natural language captions
+        **Architecture**: CNN + LSTM/Transformer based
         """)
-    
-    # Display model stats if available
-    if features:
-        st.sidebar.markdown("---")
-        st.sidebar.header("📊 Dataset Statistics")
-        st.sidebar.metric("Total Images", len(features))
-        if features:
-            feature_dim = list(features.values())[0].shape[0] if features else "Unknown"
-            st.sidebar.metric("Feature Dimension", feature_dim)
 
 if __name__ == "__main__":
     main()
