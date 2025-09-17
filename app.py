@@ -202,36 +202,56 @@ def Image_Caption(picture, model, words_to_index, index_to_words,
     generated_words = []
 
     for _ in range(max_steps):
-        # Convert current text to sequence
-        sequence = [words_to_index[w] for w in in_text.split() if w in words_to_index]
-        sequence = pad_sequences([sequence], maxlen=max_length, padding='pre')
+        try:
+            # Convert current text to sequence
+            sequence = [words_to_index[w] for w in in_text.split() if w in words_to_index]
+            sequence = pad_sequences([sequence], maxlen=max_length, padding='pre')
 
-        # Predict next word probabilities
-        yhat = model([picture, sequence], training=False)
-        probabilities = yhat.numpy().ravel()
+            # Predict next word probabilities
+            yhat = model([picture, sequence], training=False)
+            probabilities = yhat.numpy().ravel()
 
-        # Temperature scaling
-        probabilities = np.exp(np.log(probabilities + 1e-9)/temperature)
-        probabilities /= np.sum(probabilities)
+            # Temperature scaling
+            probabilities = np.exp(np.log(probabilities + 1e-9)/temperature)
+            probabilities /= np.sum(probabilities)
 
-        # Top-k sampling
-        top_indices = np.argsort(probabilities)[-top_k:]
-        top_probs = probabilities[top_indices] / np.sum(probabilities[top_indices])
-        yhat_index = np.random.choice(top_indices, p=top_probs)
+            # Top-k sampling
+            top_indices = np.argsort(probabilities)[-top_k:]
+            top_probs = probabilities[top_indices] / np.sum(probabilities[top_indices])
+            yhat_index = np.random.choice(top_indices, p=top_probs)
 
-        word = index_to_words[yhat_index]
+            # Ensure yhat_index is a scalar
+            if hasattr(yhat_index, 'item'):
+                yhat_index = yhat_index.item()
+            elif hasattr(yhat_index, '__len__') and len(yhat_index) > 0:
+                yhat_index = yhat_index[0]
 
-        # Stop conditions
-        if word == 'endseq':
+            word = index_to_words[yhat_index]
+
+            # Ensure word is a string, not an array
+            if hasattr(word, 'item'):
+                word = word.item()
+            elif hasattr(word, '__len__') and not isinstance(word, str):
+                word = str(word)
+
+            # Stop conditions - use explicit string comparisons
+            if str(word) == 'endseq':
+                break
+            if str(word) == 'xxxx':  # skip placeholder tokens
+                continue
+                
+            # Avoid repeating the same word 3 times consecutively
+            if (len(generated_words) >= 2 and 
+                str(word) == str(generated_words[-1]) and 
+                str(word) == str(generated_words[-2])):
+                break
+
+            generated_words.append(str(word))
+            in_text += ' ' + str(word)
+            
+        except Exception as e:
+            print(f"Error in caption generation step: {e}")
             break
-        if word == 'xxxx':  # skip placeholder tokens
-            continue
-        # Avoid repeating the same word 3 times consecutively
-        if len(generated_words) >= 2 and word == generated_words[-1] and word == generated_words[-2]:
-            break
-
-        generated_words.append(word)
-        in_text += ' ' + word
 
     return ' '.join(generated_words)
 
