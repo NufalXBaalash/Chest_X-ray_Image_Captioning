@@ -151,8 +151,11 @@ st.markdown("""
 def load_model_and_data():
     """Load the trained model and tokenizer data with caching"""
     try:
-        # Load trained model
-        model = load_model('model.keras', compile=False)
+        # Load trained model - try both possible names
+        try:
+            model = load_model('model_2.keras', compile=False)
+        except:
+            model = load_model('model.keras', compile=False)
         
         # Load tokenizer mappings
         with open("wordtoix.pkl", "rb") as f:
@@ -203,6 +206,7 @@ def generate_caption(model, image_features, words_to_index, index_to_words,
                     max_steps=25, temperature=0.7, top_k=5, max_length=124):
     """
     Generate a caption for a given image feature vector.
+    This matches the original Image_Caption function from your code.
     
     Args:
         model: Trained captioning model
@@ -222,29 +226,25 @@ def generate_caption(model, image_features, words_to_index, index_to_words,
         if not words_to_index or not index_to_words:
             return "Error: Missing word mappings"
         
-        # Check for different possible start tokens
-        start_tokens = ['startseq', 'start', '<start>', '<s>', 'START']
-        start_token = None
-        
-        for token in start_tokens:
-            if token in words_to_index:
-                start_token = token
-                break
-        
-        if start_token is None:
-            return "Error: No start token found in vocabulary. Available tokens: " + str(list(words_to_index.keys())[:10])
-        
-        in_text = start_token
+        # For medical models, we might not have startseq, so we'll start with empty sequence
+        # and let the model generate the first word
+        in_text = 'startseq'  # Try the original approach first
         generated_words = []
 
-        for step in range(max_steps):
+        # If startseq is not in vocabulary, start with empty sequence
+        if 'startseq' not in words_to_index:
+            in_text = ''
+            generated_words = []
+
+        for _ in range(max_steps):
             try:
                 # Convert current text to sequence
-                sequence = [words_to_index[w] for w in in_text.split() if w in words_to_index]
+                if in_text:
+                    sequence = [words_to_index[w] for w in in_text.split() if w in words_to_index]
+                else:
+                    sequence = []
                 
-                if not sequence:
-                    break
-                    
+                # Pad sequence
                 sequence = pad_sequences([sequence], maxlen=max_length, padding='pre')
 
                 # Predict next word probabilities
@@ -271,8 +271,7 @@ def generate_caption(model, image_features, words_to_index, index_to_words,
                 word = index_to_words[yhat_index]
 
                 # Stop conditions
-                end_tokens = ['endseq', 'end', '<end>', '</s>', 'END']
-                if word in end_tokens:
+                if word == 'endseq':
                     break
                 if word == 'xxxx':  # skip placeholder tokens
                     continue
@@ -281,10 +280,13 @@ def generate_caption(model, image_features, words_to_index, index_to_words,
                     break
 
                 generated_words.append(word)
-                in_text += ' ' + word
+                if in_text:
+                    in_text += ' ' + word
+                else:
+                    in_text = word
                 
             except Exception as step_error:
-                print(f"Error in step {step}: {step_error}")
+                print(f"Error in step: {step_error}")
                 break
 
         if not generated_words:
