@@ -25,7 +25,7 @@ st.markdown("""
     
     .main-header {
         font-size: 3.5rem;
-        color: #8B4513;
+        color: #000000;
         text-align: center;
         margin-bottom: 2rem;
         font-weight: 700;
@@ -33,18 +33,18 @@ st.markdown("""
     
     .sub-header {
         font-size: 1.5rem;
-        color: #8B4513;
+        color: #000000;
         margin-bottom: 1rem;
         font-weight: 600;
     }
     
     .caption-box {
-        background-color: #F5F5DC;
-        color: #8B4513;
+        background-color: #E6E6FA;
+        color: #000000;
         padding: 2rem;
         border-radius: 15px;
         margin: 2rem 0;
-        border: 2px solid #D2B48C;
+        border: 2px solid #9370DB;
         font-size: 1.2rem;
         line-height: 1.6;
         text-align: center;
@@ -52,61 +52,63 @@ st.markdown("""
     }
     
     .parameter-box {
-        background-color: #F0E68C;
-        color: #8B4513;
+        background-color: #DDA0DD;
+        color: #000000;
         padding: 1.5rem;
         border-radius: 12px;
         margin: 1rem 0;
-        border: 1px solid #D2B48C;
+        border: 1px solid #9370DB;
     }
     
     .image-container {
-        background-color: #FFFFFF;
+        background-color: #F0F8FF;
+        color: #000000;
         padding: 2rem;
         border-radius: 15px;
-        border: 2px solid #D2B48C;
+        border: 2px solid #4169E1;
         margin: 2rem 0;
         text-align: center;
     }
     
     .result-container {
-        background-color: #F5F5DC;
+        background-color: #E6E6FA;
+        color: #000000;
         padding: 2rem;
         border-radius: 15px;
-        border: 2px solid #D2B48C;
+        border: 2px solid #9370DB;
         margin: 2rem 0;
     }
     
     .info-box {
-        background-color: #FFF8DC;
-        color: #8B4513;
-        padding: 1.5rem;
-        border-radius: 12px;
-        margin: 1rem 0;
-        border: 1px solid #D2B48C;
-    }
-    
-    .success-box {
-        background-color: #F0FFF0;
-        color: #228B22;
-        padding: 1rem;
-        border-radius: 10px;
-        margin: 1rem 0;
-        font-weight: 600;
-        border: 1px solid #90EE90;
-    }
-    
-    .warning-box {
-        background-color: #FFFACD;
-        color: #B8860B;
+        background-color: #F5F5DC;
+        color: #000000;
         padding: 1.5rem;
         border-radius: 12px;
         margin: 1rem 0;
         border: 1px solid #DAA520;
     }
     
+    .success-box {
+        background-color: #90EE90;
+        color: #000000;
+        padding: 1rem;
+        border-radius: 10px;
+        margin: 1rem 0;
+        font-weight: 600;
+        border: 1px solid #32CD32;
+    }
+    
+    .warning-box {
+        background-color: #FFB6C1;
+        color: #000000;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        border: 1px solid #FF69B4;
+    }
+    
     .stButton > button {
-        background-color: #8B4513;
+        background-color: #4169E1;
         color: white;
         border: none;
         border-radius: 25px;
@@ -117,39 +119,57 @@ st.markdown("""
     }
     
     .stButton > button:hover {
-        background-color: #A0522D;
+        background-color: #1E90FF;
         transform: translateY(-2px);
     }
     
     .stSelectbox > div > div {
-        background-color: #FFFFFF;
+        background-color: #F0F8FF;
         border-radius: 10px;
-        border: 1px solid #D2B48C;
+        border: 1px solid #4169E1;
     }
     
     .stFileUploader > div {
-        background-color: #FFFFFF;
+        background-color: #F0F8FF;
         border-radius: 10px;
-        border: 1px solid #D2B48C;
+        border: 1px solid #4169E1;
     }
     
     .stRadio > div {
-        background-color: #FFFFFF;
+        background-color: #F0F8FF;
         border-radius: 10px;
         padding: 1rem;
-        border: 1px solid #D2B48C;
+        border: 1px solid #4169E1;
     }
     
     .metric-container {
-        background-color: #FFFFFF;
+        background-color: #F0F8FF;
+        color: #000000;
         padding: 1rem;
         border-radius: 10px;
-        border: 1px solid #D2B48C;
+        border: 1px solid #4169E1;
         margin: 0.5rem 0;
     }
     
     .stApp {
         background-color: #FFFAF1;
+    }
+    
+    /* Make sure all text is black */
+    .stMarkdown {
+        color: #000000;
+    }
+    
+    .stText {
+        color: #000000;
+    }
+    
+    .stSelectbox label {
+        color: #000000;
+    }
+    
+    .stRadio label {
+        color: #000000;
     }
 </style>
 """, unsafe_allow_html=True)
