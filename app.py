@@ -207,28 +207,51 @@ def generate_caption(picture, model, words_to_index, index_to_words,
         
         # Predict next word probabilities
         yhat = model([picture, sequence], training=False)
-        probabilities = yhat.numpy().ravel()
+        
+        # Handle different model output shapes
+        if hasattr(yhat, 'numpy'):
+            probabilities = yhat.numpy()
+        else:
+            probabilities = yhat
+            
+        # Ensure we have the right shape
+        if len(probabilities.shape) > 1:
+            probabilities = probabilities[0]  # Take first batch element
+        probabilities = probabilities.ravel()  # Flatten to 1D
         
         # Temperature scaling
         probabilities = np.exp(np.log(probabilities + 1e-9) / temperature)
         probabilities /= np.sum(probabilities)
         
-        # Top-k sampling
-        top_indices = np.argsort(probabilities)[-top_k:]
-        top_probs = probabilities[top_indices] / np.sum(probabilities[top_indices])
-        yhat_index = np.random.choice(top_indices, p=top_probs)
+        # Top-k sampling with safety checks
+        if len(probabilities) == 0:
+            break
+            
+        # Ensure we don't exceed vocabulary size
+        top_k_actual = min(top_k, len(probabilities))
+        top_indices = np.argsort(probabilities)[-top_k_actual:]
+        top_probs = probabilities[top_indices]
         
-        word = index_to_words[yhat_index]
+        # Normalize probabilities
+        if np.sum(top_probs) > 0:
+            top_probs = top_probs / np.sum(top_probs)
+            yhat_index = np.random.choice(top_indices, p=top_probs)
+        else:
+            # Fallback: choose the highest probability word
+            yhat_index = np.argmax(probabilities)
+        
+        # Convert word index to actual word
+        word = index_to_words.get(yhat_index, '<UNK>')
         
         # Stop conditions
         if word == 'endseq':
             break
-        if word == 'xxxx':  # skip placeholder tokens
+        if word == 'xxxx' or word == '<UNK>':  # skip placeholder tokens and unknown words
             continue
             
         # Avoid repeating the same word 3 times consecutively
-        if len(generated_words) >= 2 and word == generated_words[-1] == generated_words[-2]:
-            break
+        if len(generated_words) >= 2 and word == generated_words[-1] and word == generated_words[-2]:
+            continue
             
         generated_words.append(word)
         in_text += ' ' + word
