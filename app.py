@@ -179,7 +179,91 @@ def load_ground_truth_captions():
     except:
         return None
 
-def generate_caption(picture, model, words_to_index, index_to_words, 
+def generate_caption_simple(picture, model, words_to_index, index_to_words, 
+                           max_length=124, max_steps=25, temperature=0.7, top_k=5):
+    """
+    Simplified caption generation to avoid array comparison issues.
+    """
+    # Start sequence
+    current_sequence = [words_to_index.get('startseq', 1)]
+    generated_words = []
+    
+    for step in range(max_steps):
+        # Prepare input sequence
+        # Manual padding to avoid pad_sequences issues
+        if len(current_sequence) > max_length:
+            padded_seq = current_sequence[-max_length:]
+        else:
+            padding_needed = max_length - len(current_sequence)
+            padded_seq = [0] * padding_needed + current_sequence
+        
+        # Convert to numpy array
+        sequence_input = np.array([padded_seq], dtype=np.int32)
+        
+        # Ensure picture has correct shape
+        if picture.ndim == 1:
+            picture_input = picture.reshape(1, -1)
+        else:
+            picture_input = picture
+        
+        # Get model prediction
+        try:
+            predictions = model.predict([picture_input, sequence_input], verbose=0)
+            
+            # Get probabilities for next word
+            if predictions.ndim > 1:
+                probs = predictions[0]
+            else:
+                probs = predictions
+                
+            # Convert to numpy array and flatten
+            probs = np.asarray(probs).flatten()
+            
+            # Apply temperature
+            if temperature != 1.0 and temperature > 0:
+                probs = np.power(probs + 1e-10, 1.0 / temperature)
+            
+            # Normalize
+            probs = probs / np.sum(probs)
+            
+            # Top-k sampling
+            if top_k > 0 and top_k < len(probs):
+                # Get top k indices
+                top_k_indices = np.argpartition(probs, -top_k)[-top_k:]
+                # Create new probability distribution
+                top_k_probs = np.zeros_like(probs)
+                top_k_probs[top_k_indices] = probs[top_k_indices]
+                # Renormalize
+                top_k_probs = top_k_probs / np.sum(top_k_probs)
+                probs = top_k_probs
+            
+            # Sample next word
+            next_word_id = np.random.choice(len(probs), p=probs)
+            
+            # Get word from index
+            next_word = index_to_words.get(next_word_id, '<UNK>')
+            
+            # Check for end conditions
+            if next_word == 'endseq':
+                break
+            if next_word in ['<UNK>', 'xxxx', 'unk']:
+                continue
+                
+            # Check for repetition (simple string comparison)
+            if (len(generated_words) >= 2 and 
+                next_word == generated_words[-1] and 
+                next_word == generated_words[-2]):
+                continue
+            
+            # Add word to sequence
+            generated_words.append(next_word)
+            current_sequence.append(next_word_id)
+            
+        except Exception as e:
+            print(f"Error in step {step}: {e}")
+            break
+    
+    return ' '.join(generated_words) if generated_words else "No caption generated" 
                     max_length=124, max_steps=25, temperature=0.7, top_k=5):
     """
     Generate a caption for a given image feature vector.
@@ -279,6 +363,10 @@ def main():
     top_k = st.sidebar.slider("Top-K", min_value=1, max_value=20, value=5,
                               help="Number of top words to sample from")
     
+    # Debug mode toggle
+    debug_mode = st.sidebar.checkbox("Debug Mode", value=False, help="Show detailed debugging information")
+    simple_mode = st.sidebar.checkbox("Use Simple Generator", value=True, help="Use simplified caption generator to avoid array issues")
+    
     # Main content area
     col1, col2 = st.columns([1, 1])
     
@@ -348,14 +436,22 @@ def main():
                     current_pic = locals().get('pic') or st.session_state.get('selected_pic')
                     
                     # Debug information
-                    st.write(f"Debug: Image vector shape: {current_vector.shape}")
-                    st.write(f"Debug: Vocabulary size: {len(index_to_words)}")
+                    if debug_mode:
+                        st.write(f"Debug: Image vector shape: {current_vector.shape}")
+                        st.write(f"Debug: Vocabulary size: {len(index_to_words)}")
+                        st.write(f"Debug: Using {'simple' if simple_mode else 'detailed'} generator")
                     
                     with st.spinner("Generating caption..."):
-                        caption = generate_caption(
-                            current_vector, model, words_to_index, index_to_words,
-                            max_steps=max_steps, temperature=temperature, top_k=top_k
-                        )
+                        if simple_mode:
+                            caption = generate_caption_simple(
+                                current_vector, model, words_to_index, index_to_words,
+                                max_steps=max_steps, temperature=temperature, top_k=top_k
+                            )
+                        else:
+                            caption = generate_caption(
+                                current_vector, model, words_to_index, index_to_words,
+                                max_steps=max_steps, temperature=temperature, top_k=top_k
+                            )
                     
                     # Check if caption generation failed
                     if "Caption generation failed" in caption:
