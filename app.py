@@ -7,6 +7,8 @@ from keras.models import load_model
 from PIL import Image
 import os
 import io
+import requests
+import gdown
 
 # Configure Streamlit page
 st.set_page_config(
@@ -16,16 +18,64 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Function to download encodings from Google Drive
+def download_encodings_from_drive():
+    """Download encodings.pkl from Google Drive if not present locally."""
+    encodings_path = "encodings.pkl"
+    
+    if not os.path.exists(encodings_path):
+        st.info("Encodings file not found locally. Downloading from Google Drive...")
+        
+        # Google Drive file ID from the shared link
+        file_id = "1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe"
+        url = f"https://drive.google.com/uc?id={file_id}"
+        
+        try:
+            # Create a progress bar
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            status_text.text("Downloading encodings file...")
+            
+            # Download using gdown
+            gdown.download(url, encodings_path, quiet=False)
+            
+            progress_bar.progress(100)
+            status_text.text("Download completed!")
+            st.success("Successfully downloaded encodings.pkl from Google Drive!")
+            
+        except Exception as e:
+            st.error(f"Failed to download encodings file: {e}")
+            st.error("Please ensure you have internet connection and the file is accessible.")
+            
+            # Alternative method using requests
+            st.info("Trying alternative download method...")
+            try:
+                response = requests.get(url)
+                response.raise_for_status()
+                
+                with open(encodings_path, 'wb') as f:
+                    f.write(response.content)
+                
+                st.success("Successfully downloaded using alternative method!")
+            except Exception as e2:
+                st.error(f"Alternative download method also failed: {e2}")
+                st.error("Please manually download the encodings.pkl file and place it in the app directory.")
+                st.stop()
+    
+    return encodings_path
+
 # Cache the model and data loading functions
 @st.cache_resource
 def load_model_and_data():
     """Load the trained model and preprocessing data."""
     try:
         # Load trained model
-        model = load_model('model.keras', compile=False)
+        model = load_model('model_2.keras', compile=False)
         
-        # Load image features
-        features = pickle.load(open("encodings.pkl", "rb"))
+        # Download and load image features
+        encodings_path = download_encodings_from_drive()
+        features = pickle.load(open(encodings_path, "rb"))
         
         # Load tokenizer mappings
         with open("wordtoix.pkl", "rb") as f:
@@ -37,6 +87,11 @@ def load_model_and_data():
         return model, features, words_to_index, index_to_words
     except FileNotFoundError as e:
         st.error(f"Model or data files not found: {e}")
+        st.error("Please ensure the following files are in your app directory:")
+        st.error("- model_2.keras")
+        st.error("- wordtoix.pkl") 
+        st.error("- ixtoword.pkl")
+        st.error("- encodings.pkl (will be downloaded automatically)")
         st.stop()
     except Exception as e:
         st.error(f"Error loading model or data: {e}")
@@ -114,10 +169,13 @@ def main():
     st.title("🏥 Medical Image Captioning System")
     st.markdown("Generate automated captions for chest X-ray images using deep learning")
     
-    # Load model and data
+    # Load model and data (will auto-download encodings if needed)
     with st.spinner("Loading model and data..."):
         model, features, words_to_index, index_to_words = load_model_and_data()
         ground_truth = load_ground_truth_captions()
+    
+    st.sidebar.success(f"✅ Model loaded successfully!")
+    st.sidebar.info(f"📊 {len(features)} images in dataset")
     
     # Sidebar for parameters
     st.sidebar.header("Caption Generation Parameters")
