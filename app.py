@@ -71,7 +71,7 @@ def load_model_and_data():
     """Load the trained model and preprocessing data."""
     try:
         # Load trained model
-        model = load_model('model_2.keras', compile=False)
+        model = load_model('model.keras', compile=False)
         
         # Download and load image features
         encodings_path = download_encodings_from_drive()
