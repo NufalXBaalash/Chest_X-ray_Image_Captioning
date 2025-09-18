@@ -347,28 +347,46 @@ def main():
                     current_vector = locals().get('image_vector') or st.session_state.get('image_vector')
                     current_pic = locals().get('pic') or st.session_state.get('selected_pic')
                     
+                    # Debug information
+                    st.write(f"Debug: Image vector shape: {current_vector.shape}")
+                    st.write(f"Debug: Vocabulary size: {len(index_to_words)}")
+                    
                     with st.spinner("Generating caption..."):
                         caption = generate_caption(
                             current_vector, model, words_to_index, index_to_words,
                             max_steps=max_steps, temperature=temperature, top_k=top_k
                         )
                     
-                    st.success("Caption generated successfully!")
-                    st.markdown(f"**Generated Caption:**")
-                    st.markdown(f'> "{caption}"')
-                    
-                    # Show ground truth if available
-                    if ground_truth and current_pic in ground_truth:
-                        st.markdown("**Ground Truth Caption:**")
-                        st.markdown(f'> "{ground_truth[current_pic]}"')
-                    
-                    # Show statistics
-                    st.markdown("**Caption Statistics:**")
-                    word_count = len(caption.split())
-                    st.metric("Word Count", word_count)
+                    # Check if caption generation failed
+                    if "Caption generation failed" in caption:
+                        st.error(f"Caption generation error: {caption}")
+                    else:
+                        st.success("Caption generated successfully!")
+                        st.markdown(f"**Generated Caption:**")
+                        st.markdown(f'> "{caption}"')
+                        
+                        # Show ground truth if available
+                        if ground_truth and current_pic in ground_truth:
+                            st.markdown("**Ground Truth Caption:**")
+                            st.markdown(f'> "{ground_truth[current_pic]}"')
+                        
+                        # Show statistics
+                        st.markdown("**Caption Statistics:**")
+                        word_count = len(caption.split()) if caption else 0
+                        st.metric("Word Count", word_count)
                     
                 except Exception as e:
-                    st.error(f"Error generating caption: {e}")
+                    st.error(f"Error in caption generation process: {e}")
+                    st.error("Please check that all model files are properly loaded.")
+                    
+                    # Additional debugging info
+                    try:
+                        st.write("Debug information:")
+                        st.write(f"- Model type: {type(model)}")
+                        st.write(f"- Words to index keys (first 10): {list(words_to_index.keys())[:10]}")
+                        st.write(f"- Index to words keys (first 10): {list(index_to_words.keys())[:10]}")
+                    except:
+                        st.write("Could not retrieve debug information")
             else:
                 st.warning("Please select an image first!")
     
