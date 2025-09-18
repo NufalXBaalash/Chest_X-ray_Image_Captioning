@@ -28,7 +28,6 @@ def download_encodings_from_drive():
         
         # Google Drive file ID from the shared link
         file_id = "1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe"
-        url = f"https://drive.google.com/uc?id={file_id}"
         
         try:
             # Create a progress bar
@@ -36,32 +35,103 @@ def download_encodings_from_drive():
             status_text = st.empty()
             
             status_text.text("Downloading encodings file...")
+            progress_bar.progress(25)
             
-            # Download using gdown
-            gdown.download(url, encodings_path, quiet=False)
+            # Method 1: Try gdown first
+            try:
+                import gdown
+                url = f"https://drive.google.com/uc?id={file_id}&export=download"
+                gdown.download(url, encodings_path, quiet=False)
+                progress_bar.progress(75)
+                
+            except Exception as gdown_error:
+                st.warning(f"gdown failed: {gdown_error}. Trying alternative method...")
+                progress_bar.progress(50)
+                
+                # Method 2: Direct download with session
+                session = requests.Session()
+                response = session.get(f"https://drive.google.com/uc?id={file_id}", stream=True)
+                
+                # Check if we got a confirmation page
+                if 'download_warning' in response.text or response.status_code != 200:
+                    # Try to get the confirmation token
+                    for line in response.text.split('\n'):
+                        if 'confirm=' in line and 'download' in line:
+                            import re
+                            confirm_token = re.search(r'confirm=([0-9A-Za-z_]+)', line)
+                            if confirm_token:
+                                confirm_token = confirm_token.group(1)
+                                break
+                    else:
+                        # Try a different approach
+                        response = session.get(
+                            f"https://drive.google.com/uc?export=download&id={file_id}&confirm=t",
+                            stream=True
+                        )
+                
+                # Download the file
+                if response.status_code == 200:
+                    with open(encodings_path, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                else:
+                    raise Exception(f"Failed to download: HTTP {response.status_code}")
             
-            progress_bar.progress(100)
-            status_text.text("Download completed!")
-            st.success("Successfully downloaded encodings.pkl from Google Drive!")
+            progress_bar.progress(90)
             
+            # Validate the downloaded file
+            if os.path.exists(encodings_path):
+                file_size = os.path.getsize(encodings_path)
+                
+                if file_size < 1000:  # File too small, likely an error page
+                    # Read first few bytes to check if it's HTML
+                    with open(encodings_path, 'rb') as f:
+                        first_bytes = f.read(100)
+                    
+                    if b'<' in first_bytes or b'html' in first_bytes.lower():
+                        os.remove(encodings_path)  # Remove the invalid file
+                        raise Exception("Downloaded file appears to be HTML, not a pickle file. The Google Drive link might require permission.")
+                
+                # Try to load the pickle file to validate it
+                try:
+                    with open(encodings_path, 'rb') as f:
+                        pickle.load(f)
+                    progress_bar.progress(100)
+                    status_text.text("Download completed and validated!")
+                    st.success(f"Successfully downloaded encodings.pkl ({file_size:,} bytes)")
+                    
+                except pickle.UnpicklingError:
+                    os.remove(encodings_path)
+                    raise Exception("Downloaded file is not a valid pickle file.")
+                    
+            else:
+                raise Exception("File was not created after download attempt.")
+                
         except Exception as e:
             st.error(f"Failed to download encodings file: {e}")
-            st.error("Please ensure you have internet connection and the file is accessible.")
+            st.error("Please try one of these solutions:")
+            st.error("1. Make sure the Google Drive file is publicly accessible")
+            st.error("2. Download the file manually from the Google Drive link")
+            st.error("3. Place the encodings.pkl file in the same directory as this app")
             
-            # Alternative method using requests
-            st.info("Trying alternative download method...")
-            try:
-                response = requests.get(url)
-                response.raise_for_status()
-                
-                with open(encodings_path, 'wb') as f:
-                    f.write(response.content)
-                
-                st.success("Successfully downloaded using alternative method!")
-            except Exception as e2:
-                st.error(f"Alternative download method also failed: {e2}")
-                st.error("Please manually download the encodings.pkl file and place it in the app directory.")
-                st.stop()
+            st.markdown("### Manual Download Instructions:")
+            st.markdown("1. Go to: https://drive.google.com/file/d/1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe/view?usp=sharing")
+            st.markdown("2. Click 'Download' or 'Download anyway' if warned")
+            st.markdown("3. Save the file as 'encodings.pkl' in your app directory")
+            st.markdown("4. Refresh this page")
+            
+            st.stop()
+    
+    else:
+        # File exists, validate it
+        try:
+            with open(encodings_path, 'rb') as f:
+                pickle.load(f)
+            st.sidebar.info("✅ Using cached encodings.pkl")
+        except:
+            st.error("Existing encodings.pkl file is corrupted. Please delete it and restart the app.")
+            st.stop()
     
     return encodings_path
 
@@ -71,7 +141,7 @@ def load_model_and_data():
     """Load the trained model and preprocessing data."""
     try:
         # Load trained model
-        model = load_model('model.keras', compile=False)
+        model = load_model('model_2.keras', compile=False)
         
         # Download and load image features
         encodings_path = download_encodings_from_drive()
