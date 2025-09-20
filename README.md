@@ -1,96 +1,193 @@
-# Image Caption Generator
+Got it ✅ — we’ll integrate:
 
-A Streamlit web application that generates natural language captions for images using a deep learning model.
+* The **workflow diagram**
+* The **pneumonia detection accuracy comparison chart**
+* The **table explaining project workflow**
+* The **datasets, notebooks, and research papers** section
 
-## Features
+Here’s your **complete README** with images and references included:
 
-- 🖼️ **Image Upload**: Upload images in various formats (PNG, JPG, JPEG, GIF, BMP)
-- 🎯 **Caption Generation**: Generate descriptive captions using a pre-trained model
-- ⚙️ **Configurable Parameters**: Adjust generation parameters for different results
-- 🎨 **Modern UI**: Clean and intuitive user interface
-- 📱 **Responsive Design**: Works on desktop and mobile devices
+---
 
-## Installation
+# 🩻 Chest X-ray Image Captioning & Pneumonia Detection
 
-1. Clone the repository:
+## 📖 Introduction
+
+This project combines **medical image captioning** and **disease classification** to analyze chest X-ray images.
+It leverages **deep learning** to:
+
+* Generate **textual captions** summarizing radiology scans.
+* Detect **pneumonia vs. normal cases** using transfer learning CNN models.
+
+An interactive **Streamlit application** is provided for experimentation.
+
+---
+
+## 📑 Table of Contents
+
+* [Features](#-features)
+* [Methodology](#-methodology)
+* [Workflow](#-workflow)
+* [Pneumonia Detection](#-pneumonia-detection)
+* [Installation](#-installation)
+* [Usage](#-usage)
+* [Parameters](#-parameters)
+* [File Structure](#-file-structure)
+* [Requirements](#-requirements)
+* [Datasets & References](#-datasets--references)
+* [Contributors](#-contributors)
+* [License](#-license)
+
+---
+
+## ✨ Features
+
+* 🖼 Upload **chest X-rays** and receive AI-generated captions.
+* ⚕️ Detect **pneumonia vs. normal** conditions.
+* 🔎 Adjustable caption generation parameters (max words, temperature, top-K).
+* 🧠 Uses **DenseNet121 + DistilBERT + LSTM with Attention** for captioning.
+* 📊 Includes **performance comparisons** of multiple CNN models.
+
+---
+
+## 🧠 Methodology
+
+The captioning pipeline integrates **vision + language models** to generate clinically relevant captions.
+
+![Model Architecture](./4df6c0d7-615c-4592-95e3-f0ce32feb173.png)
+
+### 🔎 Workflow Explanation
+
+1. **Image Feature Extraction (DenseNet121)** → extracts anatomical features.
+2. **Text Preprocessing & Vocabulary** → cleans reports and builds vocabulary.
+3. **DistilBERT Embeddings** → encodes semantic information from text.
+4. **CaptionDataGenerator** → aligns image + text pairs for training.
+5. **LSTM + Attention Decoder** → generates captions word by word.
+6. **Output** → final medical description.
+
+---
+
+## 🔄 Workflow Overview
+
+This project includes **two pipelines**:
+
+![Workflow](./80a3a4ee-ce9f-4f08-b142-ca2303fcf4ee.png)
+
+* **Captioning System**:
+
+  * Input: Chest X-ray image
+  * Process: DenseNet + DistilBERT + LSTM
+  * Output: Textual impression
+
+* **Pneumonia Detection**:
+
+  * Input: Chest X-ray image
+  * Process: Transfer Learning CNN
+  * Output: Pneumonia / Normal classification
+
+---
+
+## 🩺 Pneumonia Detection
+
+Several CNN architectures were evaluated for pneumonia classification.
+
+![Pneumonia Detection Accuracy](./output.png)
+
+* **MobileNetV2** achieved the highest accuracy (\~81%).
+* CNN, ResNet50, and VGG16 also performed competitively.
+
+---
+
+## 🛠 Installation
+
 ```bash
-git clone <repository-url>
-cd Image_caption
-```
-
-2. Install dependencies:
-```bash
+git clone https://github.com/NufalXBaalash/Chest_X-ray_Image_Captioning.git
+cd Chest_X-ray_Image_Captioning
 pip install -r requirements.txt
 ```
 
-## Usage
+---
 
-1. Make sure you have the following files in your project directory:
-   - `model.keras` - The trained captioning model
-   - `wordtoix.pkl` - Word to index mapping
-   - `ixtoword.pkl` - Index to word mapping
-   - `encodings.pkl` - Pre-computed image encodings (optional but recommended)
+## 🚀 Usage
 
-2. Run the Streamlit application:
+1. Ensure required files are in the directory:
+
+   * `model.keras` → trained captioning model
+   * `wordtoix.pkl`, `ixtoword.pkl` → word-index mappings
+   * `encodings.pkl` (optional, for faster inference)
+
+2. Run the Streamlit app:
+
 ```bash
 streamlit run app.py
 ```
 
-3. Open your browser and navigate to the URL shown in the terminal (usually `http://localhost:8501`)
+3. Open `http://localhost:8501` in your browser.
 
-4. **Download encodings.pkl (Recommended):**
-   ```bash
-   pip install gdown
-   gdown 1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe
-   ```
-   Or download manually from: [Google Drive Link](https://drive.google.com/file/d/1aPRfA7008147pp0Ni7SUKO-0JZHjRcCe/view?usp=drive_link)
+---
 
-5. Upload an image and adjust the generation parameters as needed
+## ⚙️ Parameters
 
-6. Click "Generate Caption" to create a description for your image
+* **Maximum Words** → limit caption length (5–50)
+* **Temperature** → randomness (0.1–2.0)
+* **Top-K Sampling** → restrict vocabulary choices
 
-## Parameters
+---
 
-- **Maximum Words**: Controls the maximum length of generated captions (5-50 words)
-- **Temperature**: Controls randomness in generation (0.1-2.0, lower = more focused, higher = more creative)
-- **Top-K Sampling**: Limits word selection to top K most probable words (1-20)
-
-## File Structure
+## 📂 File Structure
 
 ```
-Image_caption/
-├── app.py              # Main Streamlit application
-├── model.keras         # Trained captioning model
-├── wordtoix.pkl        # Word to index mapping
-├── ixtoword.pkl        # Index to word mapping
-├── encodings.pkl       # Pre-computed image encodings (download from Google Drive)
-├── requirements.txt    # Python dependencies
-└── README.md          # This file
+Chest_X-ray_Image_Captioning/
+├── app.py                # Streamlit web app
+├── model.keras           # Pre-trained captioning model
+├── wordtoix.pkl          # Word-to-index mapping
+├── ixtoword.pkl          # Index-to-word mapping
+├── encodings.pkl         # Optional pre-computed encodings
+├── requirements.txt      # Dependencies
+└── README.md             # Project documentation
 ```
 
-## Requirements
+---
 
-- Python 3.7+
-- TensorFlow 2.10+
-- Streamlit 1.28+
-- Other dependencies listed in `requirements.txt`
+## 📦 Requirements
 
-## Features
+* Python 3.7+
+* TensorFlow 2.10+
+* Streamlit 1.28+
+* Other dependencies in `requirements.txt`
 
-### With encodings.pkl:
-- **Pre-encoded Images**: Browse and select from pre-computed image encodings
-- **Fast Generation**: Skip image preprocessing for faster caption generation
-- **Dataset Images**: Access to the full dataset of pre-encoded images
+---
 
-### Without encodings.pkl:
-- **Image Upload**: Upload and process new images
-- **Real-time Processing**: Images are processed on-the-fly
-- **Flexible Input**: Support for various image formats
+## 📚 Datasets & References
 
-## Notes
+### 📊 Datasets
 
-- The application expects images to be preprocessed to 224x224 pixels
-- Model loading is cached for better performance
-- Error handling is included for robust operation
-- The interface is optimized for both desktop and mobile use
-- **encodings.pkl** provides access to pre-computed image features for faster processing
+* [CheXNet Weights](https://www.kaggle.com/datasets/sinamhd9/chexnet-weights)
+* [Indiana University Chest X-rays](https://www.kaggle.com/datasets/raddar/chest-xrays-indiana-university)
+
+### 📓 Notebooks
+
+* [Image Captioning Chest X-rays (Kaggle)](https://www.kaggle.com/code/ebrahimelgazar/image-captioning-chest-x-rays)
+
+### 📖 Research Papers
+
+* *Show, Attend and Tell: Neural Image Caption Generation with Visual Attention* (arXiv:1502.03044)
+* *CheXNet: Radiologist-Level Pneumonia Detection on Chest X-Rays with Deep Learning* (arXiv:1711.05225)
+
+---
+
+## 👨‍💻 Contributors
+
+* **[Nufal X. Baalash](https://github.com/NufalXBaalash)**
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License**.
+
+---
+
+✅ This version has all your diagrams, results, datasets, and references integrated in a **professional research-style README**.
+
+Do you want me to also **add a “Disclaimer” section** (e.g., “This project is for research/educational purposes only, not for clinical use”)?
