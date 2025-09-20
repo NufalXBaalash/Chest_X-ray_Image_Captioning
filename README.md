@@ -9,6 +9,7 @@ It leverages **deep learning** to:
 * Detect **pneumonia vs. normal cases** using transfer learning CNN models.
 
 An interactive **Streamlit application** is provided for experimentation.
+you can test the project by your self through [here](https://imagecaption-d445qtafjgv5gygbb7bjfz.streamlit.app).
 
 ---
 
@@ -60,7 +61,7 @@ The captioning pipeline integrates **vision + language models** to generate clin
 
 This project includes **two pipelines**:
 
-![Workflow]()
+![Workflow](./imgs/app_test.jpg)
 
 * **Captioning System**:
 
@@ -167,16 +168,10 @@ Chest_X-ray_Image_Captioning/
 
 ## 👨‍💻 Contributors
 
-* **[Nufal X. Baalash](https://github.com/NufalXBaalash)**
+* **[Ahmed Baalash](https://github.com/NufalXBaalash)**
 
 ---
 
 ## 📜 License
 
 This project is licensed under the **MIT License**.
-
----
-
-✅ This version has all your diagrams, results, datasets, and references integrated in a **professional research-style README**.
-
-Do you want me to also **add a “Disclaimer” section** (e.g., “This project is for research/educational purposes only, not for clinical use”)?
