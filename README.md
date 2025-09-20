@@ -60,7 +60,7 @@ The captioning pipeline integrates **vision + language models** to generate clin
 
 This project includes **two pipelines**:
 
-![Workflow](./acc_compare.png)
+![Workflow]()
 
 * **Captioning System**:
 
@@ -80,7 +80,7 @@ This project includes **two pipelines**:
 
 Several CNN architectures were evaluated for pneumonia classification.
 
-![Pneumonia Detection Accuracy](./output.png)
+![Pneumonia Detection Accuracy](./imgs/acc_compare.png)
 
 * **MobileNetV2** achieved the highest accuracy (\~81%).
 * CNN, ResNet50, and VGG16 also performed competitively.
