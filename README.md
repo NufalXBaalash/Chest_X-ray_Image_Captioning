@@ -157,6 +157,7 @@ Chest_X-ray_Image_Captioning/
 
 ### 📓 Notebooks
 
+* [Chest X-Ray Report Generation (Kaggle)](https://www.kaggle.com/code/ahmedbaalash/chest-x-ray-report-generation)
 * [Image Captioning Chest X-rays (Kaggle)](https://www.kaggle.com/code/ebrahimelgazar/image-captioning-chest-x-rays)
 
 ### 📖 Research Papers
