@@ -1,14 +1,3 @@
-Got it ✅ — we’ll integrate:
-
-* The **workflow diagram**
-* The **pneumonia detection accuracy comparison chart**
-* The **table explaining project workflow**
-* The **datasets, notebooks, and research papers** section
-
-Here’s your **complete README** with images and references included:
-
----
-
 # 🩻 Chest X-ray Image Captioning & Pneumonia Detection
 
 ## 📖 Introduction
@@ -54,7 +43,7 @@ An interactive **Streamlit application** is provided for experimentation.
 
 The captioning pipeline integrates **vision + language models** to generate clinically relevant captions.
 
-![Model Architecture](./4df6c0d7-615c-4592-95e3-f0ce32feb173.png)
+![Model Architecture](./imgs/workflow.jpg)
 
 ### 🔎 Workflow Explanation
 
@@ -71,7 +60,7 @@ The captioning pipeline integrates **vision + language models** to generate clin
 
 This project includes **two pipelines**:
 
-![Workflow](./80a3a4ee-ce9f-4f08-b142-ca2303fcf4ee.png)
+![Workflow]()
 
 * **Captioning System**:
 
@@ -91,7 +80,7 @@ This project includes **two pipelines**:
 
 Several CNN architectures were evaluated for pneumonia classification.
 
-![Pneumonia Detection Accuracy](./output.png)
+![Pneumonia Detection Accuracy](./imgs/acc_compare.png)
 
 * **MobileNetV2** achieved the highest accuracy (\~81%).
 * CNN, ResNet50, and VGG16 also performed competitively.
